@@ -237,9 +237,10 @@
 
       rawData.forEach((row, index) => {
         const keys = Object.keys(row);
+        
         let startDateVal = "", endDateVal = "", customerVal = "", serviceVal = "", bwVal = "", locationVal = "", descVal = "";
 
-        // Pindai nama header secara fleksibel
+        // Scanning berdasarkan nama header
         keys.forEach(key => {
           const k = key.trim().toLowerCase();
           const val = row[key] ? row[key].trim() : "";
@@ -253,26 +254,28 @@
           else if (k.includes("keterangan") || k.includes("deskripsi")) descVal = val;
         });
 
-        // Fallback berdasarkan indeks kolom jika tidak terdeteksi via nama
+        // Fallback presisi berdasarkan urutan posisi kolom spreadsheet:
+        // Kolom 1 = Tgl Awal, Kolom 2 = Tgl Akhir, Kolom 3 = Pelanggan, Kolom 4 = Layanan, Kolom 5 = Bandwidth, Kolom 6 = Lokasi
         if (!startDateVal && keys[0]) startDateVal = row[keys[0]];
         if (!endDateVal && keys[1]) endDateVal = row[keys[1]];
         if (!customerVal && keys[2]) customerVal = row[keys[2]];
         if (!serviceVal && keys[3]) serviceVal = row[keys[3]];
-        if (!bwVal && keys[4] && !keys[4].toLowerCase().includes("lokasi")) bwVal = row[keys[4]];
+        if (!bwVal && keys[4]) bwVal = row[keys[4]];
+        if (!locationVal && keys[5]) locationVal = row[keys[5]];
 
         const startParsed = parseFlexibleDate(startDateVal);
         const endParsed = parseFlexibleDate(endDateVal);
 
-        // Gabungkan Layanan + Bandwidth (contoh: "Astinet 100Mbps")
-        let combinedService = "";
+        // Gabungkan Jenis Layanan + Bandwidth (contoh: "Astinet 100 Mbps")
+        let fullServiceDisplay = "";
         if (serviceVal && bwVal) {
-          combinedService = `${serviceVal} ${bwVal}`;
+          fullServiceDisplay = `${serviceVal} ${bwVal}`;
         } else if (serviceVal) {
-          combinedService = serviceVal;
+          fullServiceDisplay = serviceVal;
         } else if (bwVal) {
-          combinedService = bwVal;
+          fullServiceDisplay = bwVal;
         } else {
-          combinedService = "Layanan";
+          fullServiceDisplay = "Layanan";
         }
 
         if (startParsed) {
@@ -284,8 +287,8 @@
 
           eventsData.push({
             id: index + 1,
-            customer: customerVal || "Tanpa Nama",
-            service: combinedService,
+            customer: customerVal || "Tanpa Nama Pelanggan",
+            service: fullServiceDisplay,
             startDateObj: startParsed,
             endDateObj: endParsed,
             rawStartDate: startDateVal,
@@ -297,7 +300,7 @@
         }
       });
 
-      // Sortir tanggal awal terdekat
+      // Sortir berdasarkan tanggal awal terdekat
       eventsData.sort((a, b) => a.startDateObj - b.startDateObj);
 
       updateStatsAndHighlights();
@@ -375,9 +378,9 @@
               </div>
             </div>
             ${ev.location ? `
-              <div class="mt-3 pt-2.5 border-t border-slate-100 text-xs text-slate-500 flex items-center gap-1.5">
+              <div class="mt-3 pt-2.5 border-t border-slate-100 text-xs text-slate-600 flex items-center gap-1.5 font-medium">
                 <i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0"></i>
-                <span class="truncate font-medium">${ev.location}</span>
+                <span class="truncate">${ev.location}</span>
               </div>
             ` : ''}
           </div>
@@ -400,10 +403,10 @@
             <div class="flex justify-between items-start gap-2">
               <div>
                 <h3 class="text-sm font-bold text-slate-800">${ev.customer}</h3>
-                <div class="mt-0.5">
+                <div class="mt-1">
                   <span class="inline-block bg-blue-50 text-blue-700 text-[11px] font-semibold px-2 py-0.5 rounded border border-blue-100">${ev.service}</span>
                 </div>
-                <p class="text-xs text-slate-500 flex items-center gap-1 mt-1.5">
+                <p class="text-xs text-slate-500 flex items-center gap-1 mt-2">
                   <i data-lucide="calendar" class="w-3.5 h-3.5"></i> ${formatDateIndo(ev.startDateObj)}
                   <span class="text-slate-400">•</span> Durasi ${ev.durationDays} Hari
                 </p>
@@ -415,7 +418,7 @@
               </div>
             </div>
             ${ev.location ? `
-              <div class="mt-2.5 pt-2 border-t border-slate-200/60 text-xs text-slate-500 flex items-center gap-1">
+              <div class="mt-3 pt-2 border-t border-slate-200/60 text-xs text-slate-600 flex items-center gap-1.5 font-medium">
                 <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400 flex-shrink-0"></i>
                 <span class="truncate">${ev.location}</span>
               </div>
@@ -496,9 +499,9 @@
               </div>
               
               ${ev.location ? `
-                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center text-xs text-slate-500">
+                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center text-xs text-slate-600 font-medium">
                   <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400 mr-1.5 flex-shrink-0"></i>
-                  <span class="truncate font-medium">${ev.location}</span>
+                  <span class="truncate">${ev.location}</span>
                 </div>
               ` : ''}
             </div>
