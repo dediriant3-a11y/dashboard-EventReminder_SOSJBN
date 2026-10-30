@@ -187,7 +187,7 @@
         }
 
         Papa.parse(textData, {
-          header: true,
+          header: false, // Disetting false agar parsing seragam berbasis array tanpa crash header
           skipEmptyLines: true,
           complete: function(results) {
             parseAndProcessEvents(results.data);
@@ -232,39 +232,42 @@
       return isNaN(d.getTime()) ? null : d;
     }
 
-    function parseAndProcessEvents(rawData) {
+    function parseAndProcessEvents(rows) {
       eventsData = [];
 
-      rawData.forEach((row, index) => {
-        const keys = Object.keys(row);
-        
-        // DUA PENETAPAN DATA SANGAT KETAT BERDASARKAN INDEKS CSV DAN TIPE TEKS
-        let startDateVal = row[keys[0]] || "";
-        let endDateVal = row[keys[1]] || "";
-        let customerVal = row[keys[2]] || "";
+      rows.forEach((rowArray, index) => {
+        // Abaikan baris header pertama jika berisi teks "Tanggal" atau sejenisnya
+        const firstCell = String(rowArray[0] || '').toLowerCase();
+        if (firstCell.includes('tanggal') || firstCell.includes('awal') || firstCell.includes('tgl')) {
+          return;
+        }
 
-        let col3 = (row[keys[3]] || "").trim();
-        let col4 = (row[keys[4]] || "").trim();
+        // Ambil elemen berdasarkan indeks array CSV
+        let startDateVal = String(rowArray[0] || '').trim();
+        let endDateVal = String(rowArray[1] || '').trim();
+        let customerVal = String(rowArray[2] || '').trim();
 
-        let locationVal = "";
+        // Ekstraksi pintar untuk sel-sel sisanya
         let bandwidthVal = "";
-        let serviceVal = "astinet"; // Default Jenis Layanan Utama
+        let locationVal = "";
+        let serviceVal = "astinet";
 
-        // Memilah Kolom 3 & 4 agar tidak tertukar:
-        // Mana yang berisi Mbps/Gbps = Bandwidth, Mana nama Kota = Lokasi
-        [col3, col4].forEach(val => {
-          if (!val) return;
+        for (let i = 3; i < rowArray.length; i++) {
+          let val = String(rowArray[i] || '').trim();
+          if (!val) continue;
+
           if (val.toLowerCase().includes("mbps") || val.toLowerCase().includes("gbps")) {
             bandwidthVal = val;
-          } else {
-            locationVal = val;
+          } else if (!val.startsWith("C.TEL") && !val.includes("/")) {
+            // Jika bukan nomor surat/kontrak, jadikan lokasi
+            if (!locationVal) locationVal = val;
           }
-        });
+        }
 
         const startParsed = parseFlexibleDate(startDateVal);
         const endParsed = parseFlexibleDate(endDateVal);
 
-        if (startParsed) {
+        if (startParsed && customerVal) {
           let durationDays = 1;
           if (endParsed && endParsed >= startParsed) {
             const diffTime = Math.abs(endParsed - startParsed);
@@ -273,13 +276,13 @@
 
           eventsData.push({
             id: index + 1,
-            customer: customerVal || "Tanpa Nama Pelanggan",
+            customer: customerVal,
             service: serviceVal,
             bandwidth: bandwidthVal,
             startDateObj: startParsed,
             endDateObj: endParsed,
             durationDays: durationDays,
-            location: locationVal || ""
+            location: locationVal
           });
         }
       });
@@ -308,11 +311,7 @@
       return dateObj.toLocaleDateString('id-ID', options);
     }
 
-    // TAMPILAN SESUAI GAMBAR DENGAN KETAT
-    // Baris 1: Nama Pelanggan (PT BCA / PT ABC)
-    // Baris 2: Layanan (astinet) + Bandwidth (50 Mbps)
-    // Baris 3: Tanggal + Durasi (Sen, 2 Nov 2026 • Durasi 3 Hari)
-    // Baris 4: Lokasi Layanan (GRESIK / SURABAYA)
+    // TAMPILAN SESUAI TATA LETAK PERMINTAAN Anda
     function createCardHTML(ev, statusBadgeHTML) {
       const dateText = formatDateIndo(ev.startDateObj);
 
@@ -325,7 +324,7 @@
             ${statusBadgeHTML}
           </div>
 
-          <!-- BARIS 2: Layanan (astinet) + Bandwidth (50 Mbps / 30 Mbps) -->
+          <!-- BARIS 2: Layanan (astinet) + Bandwidth (50 Mbps) -->
           <div class="flex items-center gap-2">
             <span class="text-lg font-black tracking-tight text-slate-900 lowercase">${ev.service}</span>
             ${ev.bandwidth ? `<span class="bg-blue-50 text-blue-600 font-bold text-xs px-2.5 py-0.5 rounded border border-blue-100">${ev.bandwidth}</span>` : ''}
@@ -382,7 +381,6 @@
       document.getElementById("statUpcoming").innerText = upcomingCount;
       document.getElementById("statPassed").innerText = passedCount;
 
-      // Event Hari Ini
       const todayContainer = document.getElementById("todayEventsContainer");
       if (todayList.length === 0) {
         todayContainer.innerHTML = `
@@ -398,7 +396,6 @@
         }).join("");
       }
 
-      // Akan Datang Terdekat
       const upcomingContainer = document.getElementById("upcomingEventsContainer");
       if (upcomingList.length === 0) {
         upcomingContainer.innerHTML = `
