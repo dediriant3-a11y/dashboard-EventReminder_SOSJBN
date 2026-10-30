@@ -1,318 +1,630 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="h-full">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard Corporate Live Excel Update - Sheet4</title>
-  <!-- Chart.js for graphs -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- SheetJS / xlsx library -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <style>
-    body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: linear-gradient(135deg, #f4f7fb, #e8eef7); color: #1f2937; padding: 24px; }
-    .container { max-width: 1400px; margin: auto; background: #ffffff; border: 1px solid #dce4ef; border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08); }
-    .upload-bar { background: #eef5ff; border: 2px dashed #0f4c81; border-radius: 12px; padding: 16px; text-align: center; margin-bottom: 24px; }
-    .upload-bar input[type="file"] { display: none; }
-    .btn-upload { background: #0f4c81; color: white; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-block; margin-top: 6px; font-size: 14px; }
-    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 14px; margin-bottom: 20px; }
-    .badge { background: #0f4c81; color: white; padding: 8px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-    .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
-    .card { background: linear-gradient(135deg, #f8fbff, #eef5ff); border: 1px solid #dbe7f9; border-radius: 12px; padding: 16px; }
-    .card h3 { margin: 0 0 8px; font-size: 13px; color: #475569; text-transform: uppercase; }
-    .card .value { font-size: 24px; font-weight: 700; color: #0f4c81; }
-    .charts { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; margin-bottom: 20px; }
-    .panel { background: #f9fbfd; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; }
-    canvas { width: 100% !important; height: 260px !important; }
-    table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; }
-    th { background: #0f4c81; color: white; padding: 12px; text-align: center; font-size: 13px; }
-    td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 13px; }
-    .witel { text-align: left; font-weight: 600; color: #1f2937; }
-    .green { color: #0f9d58; font-weight: 700; }
-    .red { color: #d62828; font-weight: 700; }
-    .notes { margin-top: 20px; background: #f8fbff; border-left: 4px solid #0f4c81; padding: 12px 14px; border-radius: 8px; font-size: 13px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Pengingat Event & Kegiatan</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- PapaParse CDN for parsing CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+    </style>
 </head>
-<body>
-  <div class="container">
-    <div class="upload-bar" id="dropZone">
-      <div style="font-weight: 600; font-size: 15px; color: #0f4c81;">📁 Data Terhubung Online (GitHub)</div>
-      <div style="font-size: 13px; color: #64748b; margin-top: 4px;">Atau upload file Excel (.xlsx / .xls) secara manual jika ingin mengganti data</div>
-      <label class="btn-upload">
-        Pilih File Excel Manual
-        <input type="file" id="excelFileInput" accept=".xlsx, .xls" />
-      </label>
-      <div id="fileNameDisplay" style="margin-top: 8px; font-weight: 600; font-size: 13px; color: #10b981;">Memuat data dari GitHub...</div>
-    </div>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-full flex flex-col transition-colors duration-200">
 
-    <div class="header">
-      <div>
-        <h1 id="reportTitle" style="margin:0; font-size:24px; color:#0f172a;">
-          PROVISIONING NEW SALES INDIBIZ TR3 JBN MTD H-1
-        </h1>
-        <div style="margin-top:8px; font-size:14px; color:#475569; line-height:1.7;">
-          <div><strong>Tanggal Report :</strong> <span id="reportDate">-</span></div>
-          <div><strong>Periode Order &amp; PS :</strong> <span id="reportPeriod">-</span></div>
-          <div><strong>Last Update Proses :</strong> <span id="reportUpdate">-</span></div>
+    <!-- Navbar -->
+    <header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700/60 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo & Title -->
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-brand-500 text-white rounded-xl shadow-md shadow-brand-500/20">
+                        <i data-lucide="calendar-heart" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold leading-tight">EventReminder</h1>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Sinkron dengan Google Sheets</p>
+                    </div>
+                </div>
+
+                <!-- Right Controls -->
+                <div class="flex items-center space-x-2">
+                    <button id="btnRefresh" onclick="fetchData()" class="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-lg transition-all" title="Refresh Data">
+                        <i data-lucide="refresh-cw" id="refreshIcon" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Refresh</span>
+                    </button>
+                    
+                    <button id="themeToggle" onclick="toggleDarkMode()" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all" title="Ubah Mode">
+                        <i data-lucide="moon" id="themeIcon" class="w-4 h-4"></i>
+                    </button>
+
+                    <button onclick="openGithubGuide()" class="flex items-center space-x-1 px-3 py-1.5 text-xs font-medium bg-brand-500 hover:bg-brand-600 text-white rounded-lg transition-all shadow-sm">
+                        <i data-lucide="github" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Deploy Ke GitHub</span>
+                    </button>
+                </div>
+            </div>
         </div>
-      </div>
-      <div class="badge">Telkom Regional 3 Jatim Bali Nusra</div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        <!-- Quick Stats Cards -->
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex items-center space-x-4">
+                <div class="p-3 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-xl">
+                    <i data-lucide="calendar" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Total Event</p>
+                    <h3 id="statTotal" class="text-xl font-bold">0</h3>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex items-center space-x-4">
+                <div class="p-3 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                    <i data-lucide="bell" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Hari Ini</p>
+                    <h3 id="statToday" class="text-xl font-bold text-emerald-600 dark:text-emerald-400">0</h3>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex items-center space-x-4">
+                <div class="p-3 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-xl">
+                    <i data-lucide="clock" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Segera (7 Hari)</p>
+                    <h3 id="statUpcoming" class="text-xl font-bold text-amber-600 dark:text-amber-400">0</h3>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex items-center space-x-4">
+                <div class="p-3 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl">
+                    <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Selesai/Lalu</p>
+                    <h3 id="statPast" class="text-xl font-bold">0</h3>
+                </div>
+            </div>
+        </section>
+
+        <!-- Today & Upcoming Highlights Section -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Event Hari Ini (Today's Events) -->
+            <div class="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/10 border border-emerald-200 dark:border-emerald-800/40 rounded-2xl p-5 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-2">
+                        <span class="flex h-3 w-3 relative">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                        </span>
+                        <h2 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            Event Hari Ini 
+                            <span id="currentDateBadge" class="text-xs font-normal bg-emerald-200 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 px-2 py-0.5 rounded-full"></span>
+                        </h2>
+                    </div>
+                </div>
+
+                <div id="todayList" class="space-y-3 max-h-72 overflow-y-auto pr-1">
+                    <!-- Loading Skeleton -->
+                    <div class="animate-pulse bg-white/60 dark:bg-slate-800/60 p-4 rounded-xl h-20"></div>
+                </div>
+            </div>
+
+            <!-- Event Mendatang (Upcoming Countdown) -->
+            <div class="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-5 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        <i data-lucide="sparkles" class="w-5 h-5 text-amber-500"></i>
+                        Akan Datang Terdekat
+                    </h2>
+                    <span class="text-xs text-slate-500 dark:text-slate-400">Countdown Event</span>
+                </div>
+
+                <div id="upcomingList" class="space-y-3 max-h-72 overflow-y-auto pr-1">
+                    <!-- Loading Skeleton -->
+                    <div class="animate-pulse bg-slate-100 dark:bg-slate-700/50 p-4 rounded-xl h-20"></div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- All Events Table/List with Filters -->
+        <section class="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-5 shadow-sm space-y-4">
+            
+            <!-- Controls Bar -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="font-bold text-lg text-slate-800 dark:text-slate-100">Daftar Semua Kegiatan</h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Kelola dan lihat jadwal seluruh kegiatan dari Google Sheets</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- Search Input -->
+                    <div class="relative flex-1 min-w-[200px]">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="searchInput" oninput="filterEvents()" placeholder="Cari nama, lokasi..." class="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all">
+                    </div>
+
+                    <!-- Filter Range -->
+                    <select id="filterRange" onchange="filterEvents()" class="px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <option value="all">Semua Waktu</option>
+                        <option value="upcoming" selected>Mendatang & Hari Ini</option>
+                        <option value="3days">3 Hari Ke Depan</option>
+                        <option value="7days">7 Hari Ke Depan</option>
+                        <option value="30days">30 Hari Ke Depan</option>
+                        <option value="past">Sudah Selesai</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Event Cards Grid / List -->
+            <div id="allEventsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+                <!-- Content injected via JS -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden text-center py-12 space-y-3">
+                <div class="inline-flex p-4 bg-slate-100 dark:bg-slate-700/50 rounded-full text-slate-400">
+                    <i data-lucide="calendar-x" class="w-8 h-8"></i>
+                </div>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Tidak ada kegiatan yang cocok dengan kriteria pencarian.</p>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700/60 py-6 mt-12 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+            <div class="flex items-center space-x-2">
+                <span>Diperbarui otomatis dari Google Sheets CSV</span>
+                <span>•</span>
+                <a href="https://docs.google.com/spreadsheets/d/116_OW7urpjbC_pvBmqeh2nVadBCZ0Cv0IT-eXHviMY0/edit" target="_blank" class="text-brand-500 hover:underline flex items-center gap-1">
+                    Buka Spreadsheet <i data-lucide="external-link" class="w-3 h-3"></i>
+                </a>
+            </div>
+            <button onclick="openGithubGuide()" class="hover:text-brand-500 transition-colors underline flex items-center gap-1">
+                <i data-lucide="help-circle" class="w-3.5 h-3.5"></i> Panduan Hosting GitHub Pages
+            </button>
+        </div>
+    </footer>
+
+    <!-- GitHub Deployment Modal -->
+    <div id="githubModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-xl border border-slate-200 dark:border-slate-700">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
+                <h3 class="font-bold text-lg flex items-center gap-2">
+                    <i data-lucide="github" class="w-5 h-5 text-brand-500"></i> Cara Deploy ke GitHub Pages
+                </h3>
+                <button onclick="closeGithubGuide()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-h-[60vh] overflow-y-auto pr-2">
+                <p>Ikuti langkah ini untuk mempublikasikan website pengingat ini secara **gratis** dan **otomatis update**:</p>
+                
+                <ol class="list-decimal pl-5 space-y-2">
+                    <li>Simpan seluruh kode file ini menjadi <code>index.html</code>.</li>
+                    <li>Buat repository baru di <strong>GitHub.com</strong> (contoh: <code>pengingat-kegiatan</code>).</li>
+                    <li>Upload file <code>index.html</code> ke repository tersebut.</li>
+                    <li>Buka menu <strong>Settings</strong> repository &gt; pilih menu <strong>Pages</strong> di sidebar kiri.</li>
+                    <li>Pada bagian <em>Build and deployment</em>, set Source ke <strong>Deploy from a branch</strong>, lalu pilih branch <strong>main</strong> / <strong>master</strong> dan klik <strong>Save</strong>.</li>
+                    <li>Tunggu 1-2 menit, GitHub akan memberikan URL public website Anda!</li>
+                </ol>
+
+                <div class="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 rounded-xl text-amber-800 dark:text-amber-300 text-xs">
+                    <strong>Catatan Update Data:</strong> Setiap kali Anda menambah/mengubah data di <strong>Google Sheets</strong>, website akan langsung mengambil data terbaru saat halaman dibuka atau ditekan tombol <em>Refresh</em>, tanpa perlu re-deploy ke GitHub!
+                </div>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+                <button onclick="closeGithubGuide()" class="px-4 py-2 bg-brand-500 text-white font-medium text-xs rounded-xl hover:bg-brand-600 transition-all">
+                    Mengerti
+                </button>
+            </div>
+        </div>
     </div>
 
-    <div class="cards">
-      <div class="card"><h3>PI</h3><div class="value" id="cardPI">0</div></div>
-      <div class="card"><h3>QC2</h3><div class="value" id="cardQC2">0</div></div>
-      <div class="card"><h3>TOTAL FALLOUT</h3><div class="value" id="cardFallout">0</div></div>
-      <div class="card"><h3>PS</h3><div class="value" id="cardPS">0</div></div>
-    </div>
+    <!-- Main JavaScript Logic -->
+    <script>
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXJ1LhQ4SOyXkUp4Jt_ZLpoJD2h8l-BhYQhNEFB_jO8DAX8iFeXxnYSOME5JCM8xW5p19HsMKSE1UP/pub?output=csv';
 
-    <div class="charts">
-      <div class="panel">
-        <h3>Grafik Batang - Distribusi PS per WITEL</h3>
-        <canvas id="barChart"></canvas>
-      </div>
-      <div class="panel">
-        <h3>Grafik Pie - Komposisi Status</h3>
-        <canvas id="pieChart"></canvas>
-      </div>
-    </div>
+        let rawEvents = [];
 
-    <table id="dataTable">
-      <thead>
-        <tr>
-          <th>WITEL</th>
-          <th>PRE PI</th>
-          <th>PI</th>
-          <th>TOTAL FALLOUT</th>
-          <th>QC2</th>
-          <th>PS</th>
-          <th>PS/RE (%) (Target 80%)</th>
-          <th>PS/PI (%) (Target 94%)</th>
-          <th>TTI COMPLY 1X24 (%) (Target 94%)</th>
-        </tr>
-      </thead>
-      <tbody id="tableBody"></tbody>
-    </table>
+        // Initialize Lucide icons
+        lucide.createIcons();
 
-    <div class="notes">
-      <strong>* SLA WISA 2026 </strong><br>
-      1. TTI Compliance HSI (AO/MO) | 1x24 jam 94%<br>
-      2. Compliance Order Aging (AOSODOMORO) 3x24 jam 90%<br>
-      3. PS to PI Ratio HSI (AO/MO/PDA) 94%<br>
-      4. Fallout Order HSI (AOSODOMORO) 1x12 jam> 90%<br>
-    </div>
-  </div>
-
-  <script>
-    // 1. MASUKKAN LINK RAW GITHUB FILE EXCEL ANDA DI SINI:
-    const GITHUB_EXCEL_URL = "https://raw.githubusercontent.com/dediriant3-a11y/dashboard-ReportHSI/main/data.xlsx?t=" + new Date().getTime();
-
-    let barChartInstance = null;
-    let pieChartInstance = null;
-
-    function initCharts(barLabels, barData, pieData) {
-      const barCtx = document.getElementById('barChart').getContext('2d');
-      if (barChartInstance) barChartInstance.destroy();
-      barChartInstance = new Chart(barCtx, {
-        type: 'bar',
-        data: {
-          labels: barLabels,
-          datasets: [{ label: 'PS', data: barData, backgroundColor: ['#0f4c81', '#2d6cdf', '#3b82f6', '#60a5fa', '#93c5fd'] }]
-        },
-        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
-      });
-
-      const pieCtx = document.getElementById('pieChart').getContext('2d');
-      if (pieChartInstance) pieChartInstance.destroy();
-      pieChartInstance = new Chart(pieCtx, {
-        type: 'pie',
-        data: {
-          labels: ['PRE PI', 'PI', 'FALLOUT', 'QC2', 'PS'],
-          datasets: [{ data: pieData, backgroundColor: ['#0f4c81', '#2d6cdf', '#ef4444', '#f59e0b', '#10b981'] }]
-        },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
-      });
-    }
-
-    // Load file dari GitHub secara otomatis saat halaman dibuka
-    window.addEventListener('DOMContentLoaded', () => {
-      loadExcelFromUrl(GITHUB_EXCEL_URL);
-    });
-
-    function loadExcelFromUrl(url) {
-      document.getElementById('fileNameDisplay').innerText = "Mengunduh & memproses data dari GitHub...";
-      fetch(url)
-        .then(res => {
-          if (!res.ok) throw new Error("Gagal mengambil file dari GitHub. Pastikan URL berbentuk RAW.");
-          return res.arrayBuffer();
-        })
-        .then(buffer => {
-          const data = new Uint8Array(buffer);
-          const workbook = XLSX.read(data, { type: 'array' });
-          parseWorkbook(workbook, "GitHub Online");
-        })
-        .catch(err => {
-          console.error(err);
-          document.getElementById('fileNameDisplay').innerText = "Gagal memuat file dari GitHub (Gunakan Upload Manual).";
-        });
-    }
-
-    // Handling Upload Manual
-    document.getElementById('excelFileInput').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const data = new Uint8Array(evt.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        parseWorkbook(workbook, file.name, file);
-      };
-      reader.readAsArrayBuffer(file);
-    });
-
-    function parseWorkbook(workbook, sourceName, file = null) {
-      let targetSheetName = workbook.SheetNames.find(s => s.toLowerCase() === "sheet4");
-      if (!targetSheetName) {
-        targetSheetName = workbook.SheetNames.length >= 4 ? workbook.SheetNames[3] : workbook.SheetNames[workbook.SheetNames.length - 1];
-      }
-
-      document.getElementById('fileNameDisplay').innerText = `Sumber Data: ${sourceName} (Sheet: ${targetSheetName})`;
-      const sheet = workbook.Sheets[targetSheetName];
-      if (!sheet) { alert("Sheet4 tidak ditemukan."); return; }
-
-      const jsonMatrix = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-      processExcelData(jsonMatrix, file);
-    }
-
-    function processExcelData(matrix, file) {
-      if (!matrix || matrix.length === 0) return;
-
-      let title = ""; let period = ""; let lastUpdate = ""; let excelDateReport = "";
-      let tableHeaderIdx = -1;
-
-      for (let r = 0; r < matrix.length; r++) {
-        const row = matrix[r];
-        if (!row) continue;
-        const rowStr = row.map(cell => String(cell || "")).join(" ");
-
-        if (rowStr.includes("PROVISIONING NEW SALES")) title = rowStr.trim();
-        if (rowStr.includes("PERIODE ORDER")) {
-          period = rowStr.substring(rowStr.indexOf("PERIODE ORDER")).trim().replace("PERIODE ORDER & PS :", "").trim();
+        // Dark mode setup
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+            updateThemeIcon(true);
+        } else {
+            document.documentElement.classList.remove('dark');
+            updateThemeIcon(false);
         }
-        if (rowStr.toLowerCase().includes("last update")) {
-          lastUpdate = rowStr.substring(rowStr.toLowerCase().indexOf("last update")).trim()
-            .replace(/Last update proses :/i, "").replace(/Last Update Proses :/i, "").trim();
-          const dateMatch = lastUpdate.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
-          if (dateMatch) excelDateReport = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcon(isDark);
         }
 
-        for (let c = 0; c < row.length; c++) {
-          if (row[c] && String(row[c]).trim().toUpperCase() === "WITEL") {
-            tableHeaderIdx = r;
-            break;
-          }
+        function updateThemeIcon(isDark) {
+            const themeIcon = document.getElementById('themeIcon');
+            themeIcon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+            lucide.createIcons();
         }
-        if (tableHeaderIdx !== -1) break;
-      }
 
-      if (title) document.getElementById('reportTitle').innerText = title;
-      if (period) document.getElementById('reportPeriod').innerText = period;
-      if (lastUpdate) document.getElementById('reportUpdate').innerText = lastUpdate;
-      document.getElementById('reportDate').innerText = excelDateReport || "2026-08-10";
+        // Display current date badge
+        const todayObj = new Date();
+        document.getElementById('currentDateBadge').innerText = todayObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
 
-      if (tableHeaderIdx === -1) { alert("Header 'WITEL' tidak ditemukan."); return; }
+        // Fetch Data from Published Google Sheets CSV
+        async function fetchData() {
+            const refreshIcon = document.getElementById('refreshIcon');
+            refreshIcon.classList.add('animate-spin');
 
-      const headers = matrix[tableHeaderIdx].map(h => String(h || "").trim());
-      const colMap = {};
-      headers.forEach((h, idx) => {
-        const upper = h.toUpperCase();
-        if (upper.includes("WITEL")) colMap.witel = idx;
-        else if (upper.includes("PRE PI")) colMap.prePi = idx;
-        else if (upper === "PI") colMap.pi = idx;
-        else if (upper.includes("FALLOUT")) colMap.fallout = idx;
-        else if (upper.includes("QC2")) colMap.qc2 = idx;
-        else if (upper === "PS") colMap.ps = idx;
-        else if (upper.includes("PS/RE")) colMap.psRe = idx;
-        else if (upper.includes("PS/PI")) colMap.psPi = idx;
-        else if (upper.includes("TTI COMPLY")) colMap.tti = idx;
-      });
+            Papa.parse(CSV_URL, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    refreshIcon.classList.remove('animate-spin');
+                    if (results.data && results.data.length > 0) {
+                        processEvents(results.data);
+                    } else {
+                        console.warn("CSV kosong atau format tidak sesuai.");
+                    }
+                },
+                error: function(err) {
+                    refreshIcon.classList.remove('animate-spin');
+                    console.error("Gagal mengambil CSV:", err);
+                }
+            });
+        }
 
-      const rowsData = [];
-      let totalRow = null;
+        // Process and normalize event data
+        function processEvents(data) {
+            rawEvents = data.map((item, index) => {
+                // Flexibly find column keys regardless of slight header naming variations
+                const keys = Object.keys(item);
+                
+                const findValue = (possibleNames) => {
+                    const key = keys.find(k => possibleNames.some(p => k.toLowerCase().trim().includes(p)));
+                    return key ? item[key] : '';
+                };
 
-      for (let r = tableHeaderIdx + 1; r < matrix.length; r++) {
-        const row = matrix[r];
-        if (!row || row.length === 0) continue;
-        const witelVal = String(row[colMap.witel] || "").trim();
-        if (!witelVal) continue;
+                const dateStr = findValue(['tanggal', 'date', 'waktu', 'time']) || '';
+                const title = findValue(['kegiatan', 'event', 'nama', 'title', 'acara']) || 'Kegiatan Tanpa Nama';
+                const desc = findValue(['deskripsi', 'keterangan', 'desc', 'detail']) || '';
+                const location = findValue(['lokasi', 'tempat', 'location', 'venue']) || 'Online / Tidak Ditentukan';
+                const status = findValue(['status', 'kategori', 'tipe']) || 'Rencana';
 
-        const parseVal = (idx) => {
-          if (idx === undefined || row[idx] === undefined) return 0;
-          const num = parseFloat(String(row[idx]).replace(/,/g, ''));
-          return isNaN(num) ? 0 : num;
+                const parsedDate = parseFlexibleDate(dateStr);
+
+                return {
+                    id: index,
+                    rawDate: dateStr,
+                    date: parsedDate,
+                    title: title.trim(),
+                    desc: desc.trim(),
+                    location: location.trim(),
+                    status: status.trim()
+                };
+            }).filter(e => e.title && e.date);
+
+            // Sort events by date ascending
+            rawEvents.sort((a, b) => a.date - b.date);
+
+            renderDashboard();
+        }
+
+        // Helper to parse multiple date formats (YYYY-MM-DD, DD/MM/YYYY, etc)
+        function parseFlexibleDate(dateString) {
+            if (!dateString) return null;
+            
+            // Trim whitespace
+            let str = dateString.trim();
+
+            // Direct ISO parse
+            let d = new Date(str);
+            if (!isNaN(d.getTime())) {
+                // Set hours to midnight for date-only comparison accuracy
+                d.setHours(0,0,0,0);
+                return d;
+            }
+
+            // Handles DD/MM/YYYY or DD-MM-YYYY
+            const parts = str.split(/[\/\-\.]/);
+            if (parts.length === 3) {
+                // Check if first part is day or year
+                if (parts[0].length === 4) { // YYYY-MM-DD
+                    d = new Date(parts[0], parts[1] - 1, parts[2]);
+                } else { // DD-MM-YYYY
+                    d = new Date(parts[2], parts[1] - 1, parts[0]);
+                }
+                if (!isNaN(d.getTime())) {
+                    d.setHours(0,0,0,0);
+                    return d;
+                }
+            }
+
+            return null;
+        }
+
+        // Days Diff Calculation
+        function getDaysDiff(targetDate) {
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            
+            const target = new Date(targetDate);
+            target.setHours(0,0,0,0);
+
+            const diffTime = target - today;
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        // Render Dashboard Sections
+        function renderDashboard() {
+            const todayList = document.getElementById('todayList');
+            const upcomingList = document.getElementById('upcomingList');
+
+            todayList.innerHTML = '';
+            upcomingList.innerHTML = '';
+
+            let countTotal = rawEvents.length;
+            let countToday = 0;
+            let countUpcoming7 = 0;
+            let countPast = 0;
+
+            const todayEvents = [];
+            const upcomingEvents = [];
+
+            rawEvents.forEach(event => {
+                const daysDiff = getDaysDiff(event.date);
+
+                if (daysDiff === 0) {
+                    countToday++;
+                    todayEvents.push(event);
+                } else if (daysDiff > 0) {
+                    if (daysDiff <= 7) countUpcoming7++;
+                    upcomingEvents.push({ ...event, daysDiff });
+                } else {
+                    countPast++;
+                }
+            });
+
+            // Update Stats
+            document.getElementById('statTotal').innerText = countTotal;
+            document.getElementById('statToday').innerText = countToday;
+            document.getElementById('statUpcoming').innerText = countUpcoming7;
+            document.getElementById('statPast').innerText = countPast;
+
+            // Render Today's Events
+            if (todayEvents.length === 0) {
+                todayList.innerHTML = `
+                    <div class="text-center py-6 text-slate-500 dark:text-slate-400 text-xs">
+                        <i data-lucide="coffee" class="w-6 h-6 mx-auto mb-1 opacity-60"></i>
+                        Tidak ada agenda kegiatan untuk hari ini.
+                    </div>
+                `;
+            } else {
+                todayEvents.forEach(e => {
+                    todayList.innerHTML += `
+                        <div class="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-emerald-200/80 dark:border-emerald-800/50 shadow-sm flex items-start justify-between">
+                            <div class="space-y-1">
+                                <span class="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 rounded-md">Hari Ini</span>
+                                <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100">${escapeHtml(e.title)}</h4>
+                                ${e.desc ? `<p class="text-xs text-slate-600 dark:text-slate-400">${escapeHtml(e.desc)}</p>` : ''}
+                                <div class="flex items-center space-x-3 text-[11px] text-slate-500 dark:text-slate-400 pt-1">
+                                    <span class="flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i> ${escapeHtml(e.location)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            // Render Upcoming Events
+            if (upcomingEvents.length === 0) {
+                upcomingList.innerHTML = `
+                    <div class="text-center py-6 text-slate-500 dark:text-slate-400 text-xs">
+                        <i data-lucide="check-circle" class="w-6 h-6 mx-auto mb-1 opacity-60"></i>
+                        Belum ada kegiatan mendatang lainnya.
+                    </div>
+                `;
+            } else {
+                upcomingEvents.slice(0, 5).forEach(e => {
+                    upcomingList.innerHTML += `
+                        <div class="bg-slate-50 dark:bg-slate-700/40 p-3.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
+                            <div class="space-y-1">
+                                <h4 class="font-semibold text-xs sm:text-sm text-slate-800 dark:text-slate-100">${escapeHtml(e.title)}</h4>
+                                <div class="flex items-center space-x-3 text-[11px] text-slate-500 dark:text-slate-400">
+                                    <span class="flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> ${formatDate(e.date)}</span>
+                                    <span class="flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i> ${escapeHtml(e.location)}</span>
+                                </div>
+                            </div>
+                            <div class="text-right flex-shrink-0">
+                                <span class="px-2.5 py-1 text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 rounded-lg inline-block">
+                                    H-${e.daysDiff} Hari
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            filterEvents();
+            lucide.createIcons();
+        }
+
+        // Filter and Search Events
+        function filterEvents() {
+            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+            const rangeVal = document.getElementById('filterRange').value;
+            const container = document.getElementById('allEventsContainer');
+            const emptyState = document.getElementById('emptyState');
+
+            container.innerHTML = '';
+
+            const filtered = rawEvents.filter(e => {
+                const matchesSearch = e.title.toLowerCase().includes(searchVal) || 
+                                      e.location.toLowerCase().includes(searchVal) ||
+                                      e.desc.toLowerCase().includes(searchVal);
+
+                const daysDiff = getDaysDiff(e.date);
+
+                let matchesRange = true;
+                if (rangeVal === 'upcoming') matchesRange = daysDiff >= 0;
+                else if (rangeVal === '3days') matchesRange = daysDiff >= 0 && daysDiff <= 3;
+                else if (rangeVal === '7days') matchesRange = daysDiff >= 0 && daysDiff <= 7;
+                else if (rangeVal === '30days') matchesRange = daysDiff >= 0 && daysDiff <= 30;
+                else if (rangeVal === 'past') matchesRange = daysDiff < 0;
+
+                return matchesSearch && matchesRange;
+            });
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                filtered.forEach(e => {
+                    const daysDiff = getDaysDiff(e.date);
+                    let badgeClass = "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300";
+                    let badgeText = `${daysDiff < 0 ? 'Selesai' : 'H-' + daysDiff + ' Hari'}`;
+
+                    if (daysDiff === 0) {
+                        badgeClass = "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 font-bold animate-pulse";
+                        badgeText = "HARI INI";
+                    } else if (daysDiff > 0 && daysDiff <= 3) {
+                        badgeClass = "bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200 font-semibold";
+                    } else if (daysDiff > 0 && daysDiff <= 7) {
+                        badgeClass = "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200";
+                    }
+
+                    container.innerHTML += `
+                        <div class="bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/60 rounded-xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-3">
+                            <div class="space-y-2">
+                                <div class="flex items-start justify-between gap-2">
+                                    <span class="text-[11px] font-medium text-brand-600 dark:text-brand-400 flex items-center gap-1">
+                                        <i data-lucide="calendar" class="w-3.5 h-3.5"></i> ${formatDate(e.date)}
+                                    </span>
+                                    <span class="px-2 py-0.5 text-[10px] rounded-full ${badgeClass}">
+                                        ${badgeText}
+                                    </span>
+                                </div>
+                                <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 leading-snug">${escapeHtml(e.title)}</h3>
+                                ${e.desc ? `<p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">${escapeHtml(e.desc)}</p>` : ''}
+                            </div>
+
+                            <div class="pt-2 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                                <span class="flex items-center gap-1 truncate max-w-[180px]" title="${escapeHtml(e.location)}">
+                                    <i data-lucide="map-pin" class="w-3.5 h-3.5 flex-shrink-0 text-slate-400"></i> ${escapeHtml(e.location)}
+                                </span>
+                                ${e.status ? `<span class="px-2 py-0.5 text-[10px] bg-slate-100 dark:bg-slate-700 rounded text-slate-600 dark:text-slate-300">${escapeHtml(e.status)}</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            lucide.createIcons();
+        }
+
+        // Date formatting helper
+        function formatDate(date) {
+            return date.toLocaleDateString('id-ID', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+        }
+
+        // Security XSS helper
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>"']/g, function(m) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                }[m];
+            });
+        }
+
+        // Modal Handlers
+        function openGithubGuide() {
+            document.getElementById('githubModal').classList.remove('hidden');
+        }
+
+        function closeGithubGuide() {
+            document.getElementById('githubModal').classList.add('hidden');
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            fetchData();
         };
-
-        const item = {
-          witel: witelVal,
-          prePi: parseVal(colMap.prePi),
-          pi: parseVal(colMap.pi),
-          fallout: parseVal(colMap.fallout),
-          qc2: parseVal(colMap.qc2),
-          ps: parseVal(colMap.ps),
-          psRe: colMap.psRe !== undefined ? row[colMap.psRe] : 0,
-          psPi: colMap.psPi !== undefined ? row[colMap.psPi] : 0,
-          tti: colMap.tti !== undefined ? row[colMap.tti] : 1.0
-        };
-
-        if (witelVal.toUpperCase() === "TOTAL") { totalRow = item; break; } 
-        else { rowsData.push(item); }
-      }
-
-      const sumPI = totalRow ? totalRow.pi : rowsData.reduce((a, b) => a + b.pi, 0);
-      const sumQC2 = totalRow ? totalRow.qc2 : rowsData.reduce((a, b) => a + b.qc2, 0);
-      const sumFallout = totalRow ? totalRow.fallout : rowsData.reduce((a, b) => a + b.fallout, 0);
-      const sumPS = totalRow ? totalRow.ps : rowsData.reduce((a, b) => a + b.ps, 0);
-
-      document.getElementById('cardPI').innerText = sumPI;
-      document.getElementById('cardQC2').innerText = sumQC2;
-      document.getElementById('cardFallout').innerText = sumFallout;
-      document.getElementById('cardPS').innerText = sumPS;
-
-      const tbody = document.getElementById('tableBody');
-      tbody.innerHTML = "";
-
-      rowsData.forEach(item => {
-        const tr = document.createElement('tr');
-        const formatPercent = (val) => {
-          if (val === undefined || val === null) return "0.00%";
-          const num = parseFloat(val);
-          if (isNaN(num)) return "0.00%";
-          return (num <= 1 ? num * 100 : num).toFixed(2) + "%";
-        };
-
-        const psReFormatted = formatPercent(item.psRe);
-        const psPiFormatted = formatPercent(item.psPi);
-        const ttiFormatted = formatPercent(item.tti);
-
-        tr.innerHTML = `
-          <td class="witel">${item.witel}</td>
-          <td>${item.prePi}</td>
-          <td>${item.pi}</td>
-          <td>${item.fallout}</td>
-          <td>${item.qc2}</td>
-          <td>${item.ps}</td>
-          <td class="${parseFloat(psReFormatted) >= 80 ? 'green' : 'red'}">${psReFormatted}</td>
-          <td class="${parseFloat(psPiFormatted) >= 94 ? 'green' : 'red'}">${psPiFormatted}</td>
-          <td class="${parseFloat(ttiFormatted) >= 94 ? 'green' : 'red'}">${ttiFormatted}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-
-      const barLabels = rowsData.map(d => d.witel);
-      const barData = rowsData.map(d => d.ps);
-      const totPrePi = totalRow ? totalRow.prePi : rowsData.reduce((a, b) => a + b.prePi, 0);
-
-      initCharts(barLabels, barData, [totPrePi, sumPI, sumFallout, sumQC2, sumPS]);
-    }
-  </script>
+    </script>
 </body>
 </html>
