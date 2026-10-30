@@ -8,7 +8,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
   </style>
 </head>
@@ -240,7 +240,7 @@
         
         let startDateVal = "", endDateVal = "", customerVal = "", serviceVal = "", bwVal = "", locationVal = "", descVal = "";
 
-        // Scanning berdasarkan nama header
+        // Pindai nama header
         keys.forEach(key => {
           const k = key.trim().toLowerCase();
           const val = row[key] ? row[key].trim() : "";
@@ -254,8 +254,7 @@
           else if (k.includes("keterangan") || k.includes("deskripsi")) descVal = val;
         });
 
-        // Fallback presisi berdasarkan urutan posisi kolom spreadsheet:
-        // Kolom 1 = Tgl Awal, Kolom 2 = Tgl Akhir, Kolom 3 = Pelanggan, Kolom 4 = Layanan, Kolom 5 = Bandwidth, Kolom 6 = Lokasi
+        // Fallback berdasarkan urutan posisi kolom spreadsheet
         if (!startDateVal && keys[0]) startDateVal = row[keys[0]];
         if (!endDateVal && keys[1]) endDateVal = row[keys[1]];
         if (!customerVal && keys[2]) customerVal = row[keys[2]];
@@ -265,18 +264,6 @@
 
         const startParsed = parseFlexibleDate(startDateVal);
         const endParsed = parseFlexibleDate(endDateVal);
-
-        // Gabungkan Jenis Layanan + Bandwidth (contoh: "Astinet 100 Mbps")
-        let fullServiceDisplay = "";
-        if (serviceVal && bwVal) {
-          fullServiceDisplay = `${serviceVal} ${bwVal}`;
-        } else if (serviceVal) {
-          fullServiceDisplay = serviceVal;
-        } else if (bwVal) {
-          fullServiceDisplay = bwVal;
-        } else {
-          fullServiceDisplay = "Layanan";
-        }
 
         if (startParsed) {
           let durationDays = 1;
@@ -288,7 +275,8 @@
           eventsData.push({
             id: index + 1,
             customer: customerVal || "Tanpa Nama Pelanggan",
-            service: fullServiceDisplay,
+            service: serviceVal ? serviceVal.toLowerCase() : "astinet",
+            bandwidth: bwVal || "",
             startDateObj: startParsed,
             endDateObj: endParsed,
             rawStartDate: startDateVal,
@@ -323,6 +311,46 @@
       if (!dateObj) return "";
       const options = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
       return dateObj.toLocaleDateString('id-ID', options);
+    }
+
+    // Helper untuk merender struktur card sesuai contoh gambar
+    function createCardHTML(ev, statusBadgeHTML) {
+      const dateText = formatDateIndo(ev.startDateObj);
+
+      return `
+        <div class="bg-white border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-3">
+          
+          <!-- Baris 1: Nama Pelanggan + Status Badge -->
+          <div class="flex justify-between items-start gap-2">
+            <h3 class="text-base font-bold text-slate-900">${ev.customer}</h3>
+            ${statusBadgeHTML}
+          </div>
+
+          <!-- Baris 2: Layanan (astinet) + Bandwidth (50 Mbps) -->
+          <div class="flex items-center gap-2">
+            <span class="text-lg font-black tracking-tight text-slate-900 lowercase">${ev.service}</span>
+            ${ev.bandwidth ? `<span class="bg-blue-50 text-blue-600 font-bold text-xs px-2.5 py-0.5 rounded-md border border-blue-100">${ev.bandwidth}</span>` : ''}
+          </div>
+
+          <!-- Baris 3: Tanggal + Durasi -->
+          <div class="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+            <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>
+            <span>${dateText}</span>
+            <span class="text-slate-300">•</span>
+            <span>Durasi ${ev.durationDays} Hari</span>
+          </div>
+
+          <!-- Baris 4: Lokasi (Paling Bawah) -->
+          ${ev.location ? `
+            <div class="pt-2 border-t border-slate-100">
+              <span class="text-xs font-bold text-blue-600 bg-blue-50/70 px-2.5 py-1 rounded uppercase tracking-wider inline-block">
+                ${ev.location}
+              </span>
+            </div>
+          ` : ''}
+
+        </div>
+      `;
     }
 
     function updateStatsAndHighlights() {
@@ -365,26 +393,10 @@
           </div>
         `;
       } else {
-        todayContainer.innerHTML = todayList.map(ev => `
-          <div class="bg-white p-4 rounded-xl border border-emerald-200/80 shadow-sm flex flex-col justify-between">
-            <div>
-              <div class="flex justify-between items-center mb-2">
-                <span class="inline-block px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold tracking-wider uppercase rounded-full">HARI INI</span>
-                <span class="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-md">Durasi: ${ev.durationDays} Hari</span>
-              </div>
-              <h3 class="text-base font-bold text-slate-900">${ev.customer}</h3>
-              <div class="mt-1">
-                <span class="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-0.5 rounded-md border border-blue-100">${ev.service}</span>
-              </div>
-            </div>
-            ${ev.location ? `
-              <div class="mt-3 pt-2.5 border-t border-slate-100 text-xs text-slate-600 flex items-center gap-1.5 font-medium">
-                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0"></i>
-                <span class="truncate">${ev.location}</span>
-              </div>
-            ` : ''}
-          </div>
-        `).join("");
+        todayContainer.innerHTML = todayList.map(ev => {
+          const badge = `<span class="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase rounded-full">HARI INI</span>`;
+          return createCardHTML(ev, badge);
+        }).join("");
       }
 
       // Akan Datang Terdekat
@@ -398,33 +410,10 @@
         `;
       } else {
         const topUpcoming = upcomingList.slice(0, 3);
-        upcomingContainer.innerHTML = topUpcoming.map(ev => `
-          <div class="bg-slate-50 hover:bg-slate-100/80 transition-all p-3.5 rounded-xl border border-slate-200/60 flex flex-col justify-between">
-            <div class="flex justify-between items-start gap-2">
-              <div>
-                <h3 class="text-sm font-bold text-slate-800">${ev.customer}</h3>
-                <div class="mt-1">
-                  <span class="inline-block bg-blue-50 text-blue-700 text-[11px] font-semibold px-2 py-0.5 rounded border border-blue-100">${ev.service}</span>
-                </div>
-                <p class="text-xs text-slate-500 flex items-center gap-1 mt-2">
-                  <i data-lucide="calendar" class="w-3.5 h-3.5"></i> ${formatDateIndo(ev.startDateObj)}
-                  <span class="text-slate-400">•</span> Durasi ${ev.durationDays} Hari
-                </p>
-              </div>
-              <div class="text-right flex-shrink-0">
-                <span class="inline-block px-2.5 py-1 bg-amber-100 text-amber-800 font-bold text-xs rounded-lg">
-                  ${ev.diffDays} Hari Lagi
-                </span>
-              </div>
-            </div>
-            ${ev.location ? `
-              <div class="mt-3 pt-2 border-t border-slate-200/60 text-xs text-slate-600 flex items-center gap-1.5 font-medium">
-                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400 flex-shrink-0"></i>
-                <span class="truncate">${ev.location}</span>
-              </div>
-            ` : ''}
-          </div>
-        `).join("");
+        upcomingContainer.innerHTML = topUpcoming.map(ev => {
+          const badge = `<span class="px-2.5 py-1 bg-amber-100 text-amber-800 font-bold text-xs rounded-lg">${ev.diffDays} Hari Lagi</span>`;
+          return createCardHTML(ev, badge);
+        }).join("");
       }
 
       lucide.createIcons();
@@ -439,6 +428,7 @@
       const filtered = eventsData.filter(ev => {
         const matchesSearch = ev.customer.toLowerCase().includes(searchQuery) || 
                               ev.service.toLowerCase().includes(searchQuery) ||
+                              ev.bandwidth.toLowerCase().includes(searchQuery) ||
                               ev.location.toLowerCase().includes(searchQuery) ||
                               ev.description.toLowerCase().includes(searchQuery);
 
@@ -467,45 +457,14 @@
 
           let statusBadge = '';
           if (isToday) {
-            statusBadge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">HARI INI</span>`;
+            statusBadge = `<span class="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">HARI INI</span>`;
           } else if (diff > 0) {
-            statusBadge = `<span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-semibold rounded-full">${diff} Hari Lagi</span>`;
+            statusBadge = `<span class="px-2.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-semibold rounded-full">${diff} Hari Lagi</span>`;
           } else {
-            statusBadge = `<span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-medium rounded-full">Selesai</span>`;
+            statusBadge = `<span class="px-2.5 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-medium rounded-full">Selesai</span>`;
           }
 
-          const dateDisplay = ev.endDateObj && ev.durationDays > 1 
-            ? `${formatDateIndo(ev.startDateObj)} - ${formatDateIndo(ev.endDateObj)}`
-            : formatDateIndo(ev.startDateObj);
-
-          return `
-            <div class="bg-white border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-              <div>
-                <div class="flex justify-between items-start gap-2 mb-2">
-                  <span class="text-xs font-semibold text-blue-600 flex items-center gap-1">
-                    <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
-                    ${dateDisplay}
-                  </span>
-                  ${statusBadge}
-                </div>
-                <h3 class="text-base font-bold text-slate-900 leading-snug">${ev.customer}</h3>
-                <div class="mt-1.5">
-                  <span class="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-0.5 rounded-md border border-blue-100">${ev.service}</span>
-                </div>
-                <div class="mt-2 flex items-center gap-2">
-                  <span class="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">Durasi: ${ev.durationDays} Hari</span>
-                </div>
-                ${ev.description ? `<p class="text-xs text-slate-500 mt-2 line-clamp-2">${ev.description}</p>` : ''}
-              </div>
-              
-              ${ev.location ? `
-                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center text-xs text-slate-600 font-medium">
-                  <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400 mr-1.5 flex-shrink-0"></i>
-                  <span class="truncate">${ev.location}</span>
-                </div>
-              ` : ''}
-            </div>
-          `;
+          return createCardHTML(ev, statusBadge);
         }).join("");
       }
 
