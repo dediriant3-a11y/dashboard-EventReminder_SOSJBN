@@ -36,12 +36,12 @@
   <!-- Main Container -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
     
-    <!-- Alert Error Data -->
-    <div id="errorAlert" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 text-amber-800 text-sm">
+    <!-- Alert Status Loading / Error -->
+    <div id="statusAlert" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 text-amber-800 text-sm">
       <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
       <div>
-        <p class="font-semibold">Gagal mengambil data dari Google Sheets secara langsung.</p>
-        <p id="errorDetail" class="text-xs text-amber-700 mt-1"></p>
+        <p class="font-semibold" id="statusTitle">Gagal mengambil data dari Google Sheets.</p>
+        <p id="statusDetail" class="text-xs text-amber-700 mt-1"></p>
       </div>
     </div>
 
@@ -72,7 +72,7 @@
           <i data-lucide="clock" class="w-6 h-6"></i>
         </div>
         <div>
-          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Segera (7 Hari)</p>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Segera / Mendatang</p>
           <p id="statUpcoming" class="text-2xl font-bold text-amber-600">0</p>
         </div>
       </div>
@@ -82,7 +82,7 @@
           <i data-lucide="check-circle-2" class="w-6 h-6"></i>
         </div>
         <div>
-          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Selesai/Lalu</p>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Selesai / Lalu</p>
           <p id="statPassed" class="text-2xl font-bold text-slate-600">0</p>
         </div>
       </div>
@@ -131,13 +131,12 @@
         <div class="flex items-center gap-2 w-full sm:w-auto">
           <div class="relative flex-1 sm:w-64">
             <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-            <input type="text" id="searchInput" placeholder="Cari pelanggan, layanan, lokasi..." oninput="renderAllEvents()" class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+            <input type="text" id="searchInput" placeholder="Cari pelanggan, lokasi..." oninput="renderAllEvents()" class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
           </div>
           <select id="filterSelect" onchange="renderAllEvents()" class="py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-700">
-            <option value="all">Semua Waktu</option>
-            <option value="upcoming" selected>Mendatangkan & Hari Ini</option>
+            <option value="all" selected>Semua Event</option>
             <option value="today">Hari Ini Saja</option>
-            <option value="past">Sudah Selesai</option>
+            <option value="upcoming">Mendatang</option>
           </select>
         </div>
       </div>
@@ -170,7 +169,8 @@
       const refreshIcon = document.getElementById("refreshIcon");
       if (refreshIcon) refreshIcon.classList.add("animate-spin");
 
-      document.getElementById("errorAlert").classList.add("hidden");
+      const alertEl = document.getElementById("statusAlert");
+      alertEl.classList.add("hidden");
 
       try {
         let textData = "";
@@ -187,27 +187,29 @@
         }
 
         Papa.parse(textData, {
-          header: false, // Disetting false agar parsing seragam berbasis array tanpa crash header
+          header: false,
           skipEmptyLines: true,
           complete: function(results) {
             parseAndProcessEvents(results.data);
             if (refreshIcon) refreshIcon.classList.remove("animate-spin");
           },
           error: function(err) {
-            showError("Gagal mengurai file CSV: " + err.message);
+            showError("Gagal mengurai CSV: " + err.message);
             if (refreshIcon) refreshIcon.classList.remove("animate-spin");
           }
         });
 
       } catch (err) {
-        showError("Tidak dapat mengunduh data: " + err.message);
+        showError("Tidak dapat mendownload data: " + err.message);
         if (refreshIcon) refreshIcon.classList.remove("animate-spin");
       }
     }
 
     function showError(msg) {
-      document.getElementById("errorAlert").classList.remove("hidden");
-      document.getElementById("errorDetail").innerText = msg;
+      const alertEl = document.getElementById("statusAlert");
+      alertEl.classList.remove("hidden");
+      document.getElementById("statusTitle").innerText = "Masalah Koneksi Data Google Sheets";
+      document.getElementById("statusDetail").innerText = msg;
     }
 
     function parseFlexibleDate(dateStr) {
@@ -236,22 +238,23 @@
       eventsData = [];
 
       rows.forEach((rowArray, index) => {
-        // Abaikan baris header pertama jika berisi teks "Tanggal" atau sejenisnya
+        if (!rowArray || rowArray.length === 0) return;
+
+        // Abaikan baris header
         const firstCell = String(rowArray[0] || '').toLowerCase();
         if (firstCell.includes('tanggal') || firstCell.includes('awal') || firstCell.includes('tgl')) {
           return;
         }
 
-        // Ambil elemen berdasarkan indeks array CSV
         let startDateVal = String(rowArray[0] || '').trim();
         let endDateVal = String(rowArray[1] || '').trim();
         let customerVal = String(rowArray[2] || '').trim();
 
-        // Ekstraksi pintar untuk sel-sel sisanya
         let bandwidthVal = "";
         let locationVal = "";
         let serviceVal = "astinet";
 
+        // Iterasi kolom sisa untuk memisahkan Bandwidth vs Lokasi
         for (let i = 3; i < rowArray.length; i++) {
           let val = String(rowArray[i] || '').trim();
           if (!val) continue;
@@ -259,7 +262,6 @@
           if (val.toLowerCase().includes("mbps") || val.toLowerCase().includes("gbps")) {
             bandwidthVal = val;
           } else if (!val.startsWith("C.TEL") && !val.includes("/")) {
-            // Jika bukan nomor surat/kontrak, jadikan lokasi
             if (!locationVal) locationVal = val;
           }
         }
@@ -267,26 +269,28 @@
         const startParsed = parseFlexibleDate(startDateVal);
         const endParsed = parseFlexibleDate(endDateVal);
 
-        if (startParsed && customerVal) {
+        // Jika baris memiliki minimal nama pelanggan atau tanggal
+        if (customerVal || startParsed) {
           let durationDays = 1;
-          if (endParsed && endParsed >= startParsed) {
+          if (startParsed && endParsed && endParsed >= startParsed) {
             const diffTime = Math.abs(endParsed - startParsed);
             durationDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
           }
 
           eventsData.push({
             id: index + 1,
-            customer: customerVal,
+            customer: customerVal || "Tanpa Nama Pelanggan",
             service: serviceVal,
             bandwidth: bandwidthVal,
-            startDateObj: startParsed,
-            endDateObj: endParsed,
+            startDateObj: startParsed || new Date(),
+            rawStartDate: startDateVal,
             durationDays: durationDays,
             location: locationVal
           });
         }
       });
 
+      // Sortir berdasarkan tanggal
       eventsData.sort((a, b) => a.startDateObj - b.startDateObj);
 
       updateStatsAndHighlights();
@@ -305,32 +309,36 @@
       return Math.round((t1 - t2) / (1000 * 60 * 60 * 24));
     }
 
-    function formatDateIndo(dateObj) {
-      if (!dateObj) return "";
+    function formatDateIndo(dateObj, rawStr) {
+      if (!dateObj || isNaN(dateObj.getTime())) return rawStr || "";
       const options = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
       return dateObj.toLocaleDateString('id-ID', options);
     }
 
-    // TAMPILAN SESUAI TATA LETAK PERMINTAAN Anda
+    // TAMPILAN SESUAI FORMAT PERSIS:
+    // Baris 1: Nama Pelanggan & Status
+    // Baris 2: Layanan (astinet) + Bandwidth (50 Mbps)
+    // Baris 3: Tanggal + Durasi Hari
+    // Baris 4: Lokasi Layanan (Paling Bawah)
     function createCardHTML(ev, statusBadgeHTML) {
-      const dateText = formatDateIndo(ev.startDateObj);
+      const dateText = formatDateIndo(ev.startDateObj, ev.rawStartDate);
 
       return `
         <div class="bg-white border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col space-y-3">
           
-          <!-- BARIS 1: Nama Pelanggan (Kiri) & Status Badge (Kanan) -->
+          <!-- BARIS 1: Nama Pelanggan & Status -->
           <div class="flex justify-between items-start gap-2">
             <h3 class="text-base font-bold text-slate-900">${ev.customer}</h3>
             ${statusBadgeHTML}
           </div>
 
-          <!-- BARIS 2: Layanan (astinet) + Bandwidth (50 Mbps) -->
+          <!-- BARIS 2: Layanan + Bandwidth -->
           <div class="flex items-center gap-2">
             <span class="text-lg font-black tracking-tight text-slate-900 lowercase">${ev.service}</span>
             ${ev.bandwidth ? `<span class="bg-blue-50 text-blue-600 font-bold text-xs px-2.5 py-0.5 rounded border border-blue-100">${ev.bandwidth}</span>` : ''}
           </div>
 
-          <!-- BARIS 3: Tanggal + Durasi Hari -->
+          <!-- BARIS 3: Tanggal + Durasi -->
           <div class="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
             <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>
             <span>${dateText}</span>
@@ -369,7 +377,7 @@
           todayCount++;
           todayList.push(ev);
         } else if (diff > 0) {
-          if (diff <= 7) upcomingCount++;
+          upcomingCount++;
           upcomingList.push({ ...ev, diffDays: diff });
         } else {
           passedCount++;
@@ -381,6 +389,7 @@
       document.getElementById("statUpcoming").innerText = upcomingCount;
       document.getElementById("statPassed").innerText = passedCount;
 
+      // Render Section Hari Ini
       const todayContainer = document.getElementById("todayEventsContainer");
       if (todayList.length === 0) {
         todayContainer.innerHTML = `
@@ -396,18 +405,22 @@
         }).join("");
       }
 
+      // Render Section Akan Datang Terdekat
       const upcomingContainer = document.getElementById("upcomingEventsContainer");
-      if (upcomingList.length === 0) {
+      const listToRender = upcomingList.length > 0 ? upcomingList.slice(0, 3) : eventsData.slice(0, 3);
+
+      if (listToRender.length === 0) {
         upcomingContainer.innerHTML = `
           <div class="text-center py-6 text-slate-400">
             <i data-lucide="check-circle" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
-            <p class="text-sm font-medium">Belum ada kegiatan mendatang lainnya.</p>
+            <p class="text-sm font-medium">Belum ada kegiatan mendatang.</p>
           </div>
         `;
       } else {
-        const topUpcoming = upcomingList.slice(0, 3);
-        upcomingContainer.innerHTML = topUpcoming.map(ev => {
-          const badge = `<span class="px-2.5 py-1 bg-amber-100 text-amber-800 font-bold text-xs rounded-lg">${ev.diffDays} Hari Lagi</span>`;
+        upcomingContainer.innerHTML = listToRender.map(ev => {
+          const diff = getDiffDays(ev.startDateObj, now);
+          const badgeText = diff >= 0 ? `${diff} Hari Lagi` : 'Selesai';
+          const badge = `<span class="px-2.5 py-1 bg-amber-100 text-amber-800 font-bold text-xs rounded-lg">${badgeText}</span>`;
           return createCardHTML(ev, badge);
         }).join("");
       }
@@ -431,9 +444,8 @@
         const isToday = isSameDay(ev.startDateObj, now);
 
         let matchesFilter = true;
-        if (filterValue === "upcoming") matchesFilter = diff >= 0 || isToday;
-        else if (filterValue === "today") matchesFilter = isToday;
-        else if (filterValue === "past") matchesFilter = diff < 0 && !isToday;
+        if (filterValue === "today") matchesFilter = isToday;
+        else if (filterValue === "upcoming") matchesFilter = diff >= 0;
 
         return matchesSearch && matchesFilter;
       });
@@ -442,7 +454,7 @@
         container.innerHTML = `
           <div class="col-span-full text-center py-12 text-slate-400">
             <i data-lucide="inbox" class="w-10 h-10 mx-auto mb-2 opacity-50"></i>
-            <p class="text-sm font-medium">Tidak ada kegiatan yang cocok dengan kriteria pencarian.</p>
+            <p class="text-sm font-medium">Tidak ada kegiatan yang cocok dengan pencarian.</p>
           </div>
         `;
       } else {
