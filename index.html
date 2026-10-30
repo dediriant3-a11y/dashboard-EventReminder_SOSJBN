@@ -238,47 +238,26 @@
       rawData.forEach((row, index) => {
         const keys = Object.keys(row);
         
-        let startDateVal = "", endDateVal = "", customerVal = "", serviceVal = "", bwVal = "", locationVal = "";
+        // DUA PENETAPAN DATA SANGAT KETAT BERDASARKAN INDEKS CSV DAN TIPE TEKS
+        let startDateVal = row[keys[0]] || "";
+        let endDateVal = row[keys[1]] || "";
+        let customerVal = row[keys[2]] || "";
 
-        // Deteksi header secara spesifik berdasarkan kata kunci murni
-        keys.forEach(key => {
-          const k = key.trim().toLowerCase();
-          const val = row[key] ? row[key].trim() : "";
+        let col3 = (row[keys[3]] || "").trim();
+        let col4 = (row[keys[4]] || "").trim();
 
-          if (k.includes("awal") || k.includes("start")) startDateVal = val;
-          else if (k.includes("akhir") || k.includes("end")) endDateVal = val;
-          else if (k.includes("pelanggan") || k.includes("customer")) customerVal = val;
-          else if (k.includes("layanan") || k.includes("service")) serviceVal = val;
-          else if (k.includes("bandwidth") || k.includes("bw") || k.includes("mbps")) bwVal = val;
-          else if (k.includes("lokasi") || k.includes("kota") || k.includes("tempat")) locationVal = val;
-        });
+        let locationVal = "";
+        let bandwidthVal = "";
+        let serviceVal = "astinet"; // Default Jenis Layanan Utama
 
-        // KOREKSI OTOMATIS jika data tertukar karena header tidak persis:
-        // Posisikan: 
-        // 0: StartDate, 1: EndDate, 2: Customer, 3: (Service/Location/BW), 4: (BW/Location), 5: (Location/Contract)
-        if (!startDateVal && keys[0]) startDateVal = row[keys[0]];
-        if (!endDateVal && keys[1]) endDateVal = row[keys[1]];
-        if (!customerVal && keys[2]) customerVal = row[keys[2]];
-
-        // Ambil isi nilai mentah per posisi kolom
-        let rawCol3 = keys[3] ? (row[keys[3]] || "").trim() : "";
-        let rawCol4 = keys[4] ? (row[keys[4]] || "").trim() : "";
-        let rawCol5 = keys[5] ? (row[keys[5]] || "").trim() : "";
-
-        // Jika Layanan masih kosong/tertukar:
-        // Cek mana yang mengandung Mbps (pasti Bandwidth) dan mana nama Kota (pasti Lokasi)
-        let foundBW = bwVal;
-        let foundLoc = locationVal;
-        let foundService = serviceVal;
-
-        [rawCol3, rawCol4, rawCol5].forEach(v => {
-          if (!v) return;
-          if (v.toLowerCase().includes("mbps") || v.toLowerCase().includes("gbps")) {
-            foundBW = v;
-          } else if (["surabaya", "gresik", "lamongan", "jakarta", "semarang", "bandung", "sidoarjo", "malang"].some(city => v.toLowerCase().includes(city))) {
-            foundLoc = v;
-          } else if (!v.includes("C.TEL") && !v.includes("/")) {
-            if (!foundService) foundService = v;
+        // Memilah Kolom 3 & 4 agar tidak tertukar:
+        // Mana yang berisi Mbps/Gbps = Bandwidth, Mana nama Kota = Lokasi
+        [col3, col4].forEach(val => {
+          if (!val) return;
+          if (val.toLowerCase().includes("mbps") || val.toLowerCase().includes("gbps")) {
+            bandwidthVal = val;
+          } else {
+            locationVal = val;
           }
         });
 
@@ -295,12 +274,12 @@
           eventsData.push({
             id: index + 1,
             customer: customerVal || "Tanpa Nama Pelanggan",
-            service: foundService || "astinet",
-            bandwidth: foundBW || "",
+            service: serviceVal,
+            bandwidth: bandwidthVal,
             startDateObj: startParsed,
             endDateObj: endParsed,
             durationDays: durationDays,
-            location: foundLoc || ""
+            location: locationVal || ""
           });
         }
       });
@@ -329,26 +308,26 @@
       return dateObj.toLocaleDateString('id-ID', options);
     }
 
-    // STRUKTUR CARD PERSIS PERMINTAAN:
-    // Baris 1: Nama Pelanggan (PT BCA)
-    // Baris 2: Layanan + Bandwidth (astinet 50 Mbps)
-    // Baris 3: Tanggal + Durasi
-    // Baris 4: Lokasi (GRESIK)
+    // TAMPILAN SESUAI GAMBAR DENGAN KETAT
+    // Baris 1: Nama Pelanggan (PT BCA / PT ABC)
+    // Baris 2: Layanan (astinet) + Bandwidth (50 Mbps)
+    // Baris 3: Tanggal + Durasi (Sen, 2 Nov 2026 • Durasi 3 Hari)
+    // Baris 4: Lokasi Layanan (GRESIK / SURABAYA)
     function createCardHTML(ev, statusBadgeHTML) {
       const dateText = formatDateIndo(ev.startDateObj);
 
       return `
-        <div class="bg-white border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col space-y-2.5">
+        <div class="bg-white border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col space-y-3">
           
-          <!-- BARIS 1: Nama Pelanggan (Kiri) & Status Countdown (Kanan) -->
+          <!-- BARIS 1: Nama Pelanggan (Kiri) & Status Badge (Kanan) -->
           <div class="flex justify-between items-start gap-2">
             <h3 class="text-base font-bold text-slate-900">${ev.customer}</h3>
             ${statusBadgeHTML}
           </div>
 
-          <!-- BARIS 2: Layanan + Bandwidth (Astinet 50 Mbps) -->
+          <!-- BARIS 2: Layanan (astinet) + Bandwidth (50 Mbps / 30 Mbps) -->
           <div class="flex items-center gap-2">
-            <span class="text-base font-extrabold text-slate-900 lowercase">${ev.service}</span>
+            <span class="text-lg font-black tracking-tight text-slate-900 lowercase">${ev.service}</span>
             ${ev.bandwidth ? `<span class="bg-blue-50 text-blue-600 font-bold text-xs px-2.5 py-0.5 rounded border border-blue-100">${ev.bandwidth}</span>` : ''}
           </div>
 
@@ -360,7 +339,7 @@
             <span>Durasi ${ev.durationDays} Hari</span>
           </div>
 
-          <!-- BARIS 4: Lokasi Layanan (Paling Bawah - gresik/surabaya) -->
+          <!-- BARIS 4: Lokasi Layanan (Paling Bawah) -->
           ${ev.location ? `
             <div class="pt-2 border-t border-slate-100">
               <span class="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded uppercase tracking-wider inline-block">
