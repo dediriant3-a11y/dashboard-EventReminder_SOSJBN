@@ -26,10 +26,16 @@
           <p class="text-xs text-slate-500">Sinkron dengan Google Sheets</p>
         </div>
       </div>
-      <button id="refreshBtn" onclick="loadData()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg flex items-center gap-2 transition-all">
-        <i data-lucide="refresh-cw" class="w-4 h-4" id="refreshIcon"></i>
-        <span>Refresh</span>
-      </button>
+<div class="flex items-center gap-2">
+        <a href="https://docs.google.com/spreadsheets/d/116_OW7urpjbC_pvBmqeh2nVadBCZ0Cv0IT-eXHviMY0/edit?gid=0#gid=0" target="_blank" rel="noopener" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg flex items-center gap-2 transition-all shadow-sm shadow-blue-500/20">
+          <i data-lucide="square-pen" class="w-4 h-4"></i>
+          <span>Input Data</span>
+        </a>
+              <button id="refreshBtn" onclick="loadData()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg flex items-center gap-2 transition-all">
+          <i data-lucide="refresh-cw" class="w-4 h-4" id="refreshIcon"></i>
+          <span>Refresh</span>
+        </button>
+      </div>
     </div>
   </header>
 
