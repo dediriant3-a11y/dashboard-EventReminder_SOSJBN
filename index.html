@@ -36,7 +36,7 @@
   <!-- Main Container -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
     
-    <!-- Warning Alert jika Error Data -->
+    <!-- Alert Error Data -->
     <div id="errorAlert" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 text-amber-800 text-sm">
       <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
       <div>
@@ -175,13 +175,11 @@
       try {
         let textData = "";
         
-        // Coba Fetch Direct Google Sheets CSV
         try {
           const resp = await fetch(CSV_URL + "&t=" + new Date().getTime());
           if (!resp.ok) throw new Error("HTTP error " + resp.status);
           textData = await resp.text();
         } catch (e1) {
-          // Fallback via CORS Proxy jika direct request diblokir
           console.warn("Direct fetch failed, trying CORS Proxy...", e1);
           const proxyResp = await fetch(CORS_PROXY + encodeURIComponent(CSV_URL));
           if (!proxyResp.ok) throw new Error("Proxy fetch failed");
@@ -212,29 +210,25 @@
       document.getElementById("errorDetail").innerText = msg;
     }
 
-    // Fungsi Parsing Format Tanggal Indonesia DD/MM/YYYY
+    // Parsing Format Tanggal DD/MM/YYYY
     function parseFlexibleDate(dateStr) {
       if (!dateStr) return null;
       dateStr = dateStr.toString().trim();
 
-      // Format DD/MM/YYYY atau DD-MM-YYYY atau DD.MM.YYYY
       const parts = dateStr.split(/[\/\-\.]/);
       if (parts.length === 3) {
         let p1 = parseInt(parts[0], 10);
         let p2 = parseInt(parts[1], 10);
         let p3 = parseInt(parts[2], 10);
 
-        // Jika p1 adalah Hari (DD/MM/YYYY)
         if (p1 <= 31 && p2 <= 12 && p3 >= 1000) {
           return new Date(p3, p2 - 1, p1);
         }
-        // Jika p3 adalah Hari (YYYY/MM/DD)
         if (p1 >= 1000 && p2 <= 12 && p3 <= 31) {
           return new Date(p1, p2 - 1, p3);
         }
       }
 
-      // Standar JS Date Fallback
       const d = new Date(dateStr);
       return isNaN(d.getTime()) ? null : d;
     }
@@ -243,32 +237,53 @@
       eventsData = [];
 
       rawData.forEach((row, index) => {
-        // Deteksi Otomatis Header Kolom
-        let dateVal = "", titleVal = "", locationVal = "", descVal = "";
+        let startDateVal = "", endDateVal = "", titleVal = "", locationVal = "", descVal = "";
 
         Object.keys(row).forEach(key => {
           const k = key.trim().toLowerCase();
-          if (k.includes("tanggal") || k.includes("date") || k.includes("tgl")) dateVal = row[key];
-          else if (k.includes("kegiatan") || k.includes("event") || k.includes("nama") || k.includes("acara") || k.includes("title")) titleVal = row[key];
-          else if (k.includes("lokasi") || k.includes("tempat") || k.includes("location")) locationVal = row[key];
-          else if (k.includes("keterangan") || k.includes("deskripsi") || k.includes("desc") || k.includes("info")) descVal = row[key];
+          
+          if (k.includes("awal") || k.includes("start")) {
+            startDateVal = row[key];
+          } else if (k.includes("akhir") || k.includes("end")) {
+            endDateVal = row[key];
+          } else if (!startDateVal && (k.includes("tanggal") || k.includes("date") || k.includes("tgl"))) {
+            startDateVal = row[key];
+          }
+          
+          if (k.includes("kegiatan") || k.includes("event") || k.includes("nama") || k.includes("acara") || k.includes("title")) {
+            titleVal = row[key];
+          } else if (k.includes("lokasi") || k.includes("tempat") || k.includes("location")) {
+            locationVal = row[key];
+          } else if (k.includes("keterangan") || k.includes("deskripsi") || k.includes("desc") || k.includes("info")) {
+            descVal = row[key];
+          }
         });
 
-        // Fallback jika header tidak cocok, gunakan indeks kolom
+        // Fallback ke urutan kolom jika header tidak terdeteksi
         const keys = Object.keys(row);
-        if (!dateVal && keys[0]) dateVal = row[keys[0]];
-        if (!titleVal && keys[1]) titleVal = row[keys[1]];
-        if (!locationVal && keys[2]) locationVal = row[keys[2]];
-        if (!descVal && keys[3]) descVal = row[keys[3]];
+        if (!startDateVal && keys[0]) startDateVal = row[keys[0]];
+        if (!endDateVal && keys[1] && keys[1].toLowerCase().includes("akhir")) endDateVal = row[keys[1]];
+        if (!titleVal) titleVal = row[keys[1]] || row[keys[2]] || "";
 
-        if (titleVal && dateVal) {
-          const parsedDate = parseFlexibleDate(dateVal);
-          if (parsedDate) {
+        if (titleVal && startDateVal) {
+          const startParsed = parseFlexibleDate(startDateVal);
+          const endParsed = parseFlexibleDate(endDateVal);
+
+          if (startParsed) {
+            let durationDays = 1;
+            if (endParsed && endParsed >= startParsed) {
+              const diffTime = Math.abs(endParsed - startParsed);
+              durationDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            }
+
             eventsData.push({
               id: index + 1,
               title: titleVal.trim(),
-              dateObj: parsedDate,
-              rawDate: dateVal,
+              startDateObj: startParsed,
+              endDateObj: endParsed,
+              rawStartDate: startDateVal,
+              rawEndDate: endDateVal,
+              durationDays: durationDays,
               location: locationVal ? locationVal.trim() : "",
               description: descVal ? descVal.trim() : ""
             });
@@ -276,8 +291,8 @@
         }
       });
 
-      // Sortir Berdasarkan Tanggal Terdekat
-      eventsData.sort((a, b) => a.dateObj - b.dateObj);
+      // Sortir Berdasarkan Tanggal Awal Terdekat
+      eventsData.sort((a, b) => a.startDateObj - b.startDateObj);
 
       updateStatsAndHighlights();
       renderAllEvents();
@@ -296,6 +311,7 @@
     }
 
     function formatDateIndo(dateObj) {
+      if (!dateObj) return "";
       const options = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
       return dateObj.toLocaleDateString('id-ID', options);
     }
@@ -312,9 +328,9 @@
       const upcomingList = [];
 
       eventsData.forEach(ev => {
-        const diff = getDiffDays(ev.dateObj, now);
+        const diff = getDiffDays(ev.startDateObj, now);
 
-        if (isSameDay(ev.dateObj, now)) {
+        if (isSameDay(ev.startDateObj, now)) {
           todayCount++;
           todayList.push(ev);
         } else if (diff > 0) {
@@ -336,13 +352,16 @@
         todayContainer.innerHTML = `
           <div class="text-center py-6 text-emerald-800/60">
             <i data-lucide="coffee" class="w-8 h-8 mx-auto mb-2 opacity-60"></i>
-            <p class="text-sm font-medium">Tidak ada kegiatan untuk hari ini.</p>
+            <p class="text-sm font-medium">Tidak ada kegiatan yang dimulai hari ini.</p>
           </div>
         `;
       } else {
         todayContainer.innerHTML = todayList.map(ev => `
           <div class="bg-white p-4 rounded-xl border border-emerald-200/80 shadow-sm">
-            <span class="inline-block px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold tracking-wider uppercase rounded-full mb-2">HARI INI</span>
+            <div class="flex justify-between items-center mb-2">
+              <span class="inline-block px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold tracking-wider uppercase rounded-full">HARI INI</span>
+              <span class="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-md">Durasi: ${ev.durationDays} Hari</span>
+            </div>
             <h3 class="text-base font-bold text-slate-900">${ev.title}</h3>
             ${ev.location ? `<p class="text-xs text-slate-500 flex items-center gap-1.5 mt-2"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-600"></i> ${ev.location}</p>` : ''}
             ${ev.description ? `<p class="text-xs text-slate-600 mt-2 bg-slate-50 p-2 rounded-lg">${ev.description}</p>` : ''}
@@ -366,8 +385,9 @@
             <div>
               <h3 class="text-sm font-bold text-slate-800">${ev.title}</h3>
               <p class="text-xs text-slate-500 flex items-center gap-1 mt-1">
-                <i data-lucide="calendar" class="w-3.5 h-3.5"></i> ${formatDateIndo(ev.dateObj)}
-                ${ev.location ? `• <i data-lucide="map-pin" class="w-3.5 h-3.5 ml-1"></i> ${ev.location}` : ''}
+                <i data-lucide="calendar" class="w-3.5 h-3.5"></i> ${formatDateIndo(ev.startDateObj)}
+                <span class="text-slate-400">•</span> ${ev.durationDays} Hari
+                ${ev.location ? `• <i data-lucide="map-pin" class="w-3.5 h-3.5 ml-0.5"></i> ${ev.location}` : ''}
               </p>
             </div>
             <div class="text-right flex-shrink-0 ml-3">
@@ -393,8 +413,8 @@
                               ev.location.toLowerCase().includes(searchQuery) ||
                               ev.description.toLowerCase().includes(searchQuery);
 
-        const diff = getDiffDays(ev.dateObj, now);
-        const isToday = isSameDay(ev.dateObj, now);
+        const diff = getDiffDays(ev.startDateObj, now);
+        const isToday = isSameDay(ev.startDateObj, now);
 
         let matchesFilter = true;
         if (filterValue === "upcoming") matchesFilter = diff >= 0 || isToday;
@@ -413,8 +433,8 @@
         `;
       } else {
         container.innerHTML = filtered.map(ev => {
-          const diff = getDiffDays(ev.dateObj, now);
-          const isToday = isSameDay(ev.dateObj, now);
+          const diff = getDiffDays(ev.startDateObj, now);
+          const isToday = isSameDay(ev.startDateObj, now);
 
           let statusBadge = '';
           if (isToday) {
@@ -425,17 +445,24 @@
             statusBadge = `<span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-medium rounded-full">Selesai</span>`;
           }
 
+          const dateDisplay = ev.endDateObj && ev.durationDays > 1 
+            ? `${formatDateIndo(ev.startDateObj)} - ${formatDateIndo(ev.endDateObj)}`
+            : formatDateIndo(ev.startDateObj);
+
           return `
             <div class="bg-white border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
               <div>
                 <div class="flex justify-between items-start gap-2 mb-2">
                   <span class="text-xs font-semibold text-blue-600 flex items-center gap-1">
                     <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
-                    ${formatDateIndo(ev.dateObj)}
+                    ${dateDisplay}
                   </span>
                   ${statusBadge}
                 </div>
                 <h3 class="text-sm font-bold text-slate-900 leading-snug">${ev.title}</h3>
+                <div class="mt-2 flex items-center gap-2">
+                  <span class="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">Durasi: ${ev.durationDays} Hari</span>
+                </div>
                 ${ev.description ? `<p class="text-xs text-slate-500 mt-2 line-clamp-2">${ev.description}</p>` : ''}
               </div>
               
