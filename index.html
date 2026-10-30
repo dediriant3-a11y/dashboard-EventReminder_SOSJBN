@@ -236,34 +236,28 @@
       eventsData = [];
 
       rawData.forEach((row, index) => {
-        let customerVal = "", serviceVal = "", startDateVal = "", endDateVal = "", locationVal = "", descVal = "";
+        const keys = Object.keys(row);
+        let startDateVal = "", endDateVal = "", customerVal = "", serviceVal = "", locationVal = "", descVal = "";
 
-        Object.keys(row).forEach(key => {
+        // Pindai kolom secara dinamis berdasarkan nama header
+        keys.forEach(key => {
           const k = key.trim().toLowerCase();
-          
-          if (k.includes("pelanggan") || k.includes("customer") || k.includes("klien") || k.includes("client")) {
-            customerVal = row[key];
-          } else if (k.includes("layanan") || k.includes("service") || k.includes("kegiatan") || k.includes("acara")) {
-            serviceVal = row[key];
-          } else if (k.includes("awal") || k.includes("start")) {
-            startDateVal = row[key];
-          } else if (k.includes("akhir") || k.includes("end")) {
-            endDateVal = row[key];
-          } else if (!startDateVal && (k.includes("tanggal") || k.includes("date") || k.includes("tgl"))) {
-            startDateVal = row[key];
-          } else if (k.includes("lokasi") || k.includes("tempat") || k.includes("location") || k.includes("kota")) {
-            locationVal = row[key];
-          } else if (k.includes("keterangan") || k.includes("deskripsi") || k.includes("desc")) {
-            descVal = row[key];
-          }
+          const val = row[key] ? row[key].trim() : "";
+
+          if (k.includes("awal") || k.includes("start")) startDateVal = val;
+          else if (k.includes("akhir") || k.includes("end")) endDateVal = val;
+          else if (k.includes("pelanggan") || k.includes("customer") || k.includes("klien")) customerVal = val;
+          else if (k.includes("layanan") || k.includes("service") || k.includes("jenis")) serviceVal = val;
+          else if (k.includes("lokasi") || k.includes("tempat") || k.includes("kota")) locationVal = val;
+          else if (k.includes("keterangan") || k.includes("deskripsi")) descVal = val;
         });
 
-        // Fallback jika header tidak terdeteksi otomatis
-        const keys = Object.keys(row);
-        if (!startDateVal) startDateVal = row[keys[0]] || "";
-        if (!endDateVal) endDateVal = row[keys[1]] || "";
-        if (!customerVal) customerVal = row[keys[2]] || row[keys[3]] || "Pelanggan";
-        if (!serviceVal) serviceVal = row[keys[3]] || row[keys[4]] || "";
+        // Fallback berdasarkan urutan kolom standar spreadsheet jika nama header unik
+        if (!startDateVal && keys[0]) startDateVal = row[keys[0]];
+        if (!endDateVal && keys[1]) endDateVal = row[keys[1]];
+        if (!customerVal && keys[2]) customerVal = row[keys[2]];
+        if (!serviceVal && keys[3]) serviceVal = row[keys[3]];
+        if (!locationVal && keys[4]) locationVal = row[keys[4]];
 
         const startParsed = parseFlexibleDate(startDateVal);
         const endParsed = parseFlexibleDate(endDateVal);
@@ -277,15 +271,15 @@
 
           eventsData.push({
             id: index + 1,
-            customer: customerVal ? customerVal.trim() : "Tanpa Nama",
-            service: serviceVal ? serviceVal.trim() : "Layanan",
+            customer: customerVal || "Tanpa Nama",
+            service: serviceVal || "Layanan Tidak Ditentukan",
             startDateObj: startParsed,
             endDateObj: endParsed,
             rawStartDate: startDateVal,
             rawEndDate: endDateVal,
             durationDays: durationDays,
-            location: locationVal ? locationVal.trim() : "",
-            description: descVal ? descVal.trim() : ""
+            location: locationVal || "",
+            description: descVal || ""
           });
         }
       });
@@ -362,8 +356,10 @@
               <span class="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-md">Durasi: ${ev.durationDays} Hari</span>
             </div>
             <h3 class="text-base font-bold text-slate-900">${ev.customer}</h3>
-            ${ev.service ? `<p class="text-xs font-semibold text-blue-600 mt-0.5">${ev.service}</p>` : ''}
-            ${ev.location ? `<p class="text-xs text-slate-500 flex items-center gap-1.5 mt-2"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-600"></i> ${ev.location}</p>` : ''}
+            <div class="mt-1">
+              <span class="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-0.5 rounded-md border border-blue-100">${ev.service}</span>
+            </div>
+            ${ev.location ? `<p class="text-xs text-slate-500 flex items-center gap-1.5 mt-2.5"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-600"></i> ${ev.location}</p>` : ''}
           </div>
         `).join("");
       }
@@ -383,8 +379,10 @@
           <div class="bg-slate-50 hover:bg-slate-100/80 transition-all p-3.5 rounded-xl border border-slate-200/60 flex justify-between items-center">
             <div>
               <h3 class="text-sm font-bold text-slate-800">${ev.customer}</h3>
-              ${ev.service ? `<p class="text-xs font-medium text-blue-600">${ev.service}</p>` : ''}
-              <p class="text-xs text-slate-500 flex items-center gap-1 mt-1">
+              <div class="mt-0.5">
+                <span class="inline-block bg-blue-50 text-blue-700 text-[11px] font-semibold px-2 py-0.5 rounded border border-blue-100">${ev.service}</span>
+              </div>
+              <p class="text-xs text-slate-500 flex items-center gap-1 mt-1.5">
                 <i data-lucide="calendar" class="w-3.5 h-3.5"></i> ${formatDateIndo(ev.startDateObj)}
                 <span class="text-slate-400">•</span> ${ev.durationDays} Hari
                 ${ev.location ? `• <i data-lucide="map-pin" class="w-3.5 h-3.5 ml-0.5"></i> ${ev.location}` : ''}
@@ -461,7 +459,9 @@
                   ${statusBadge}
                 </div>
                 <h3 class="text-base font-bold text-slate-900 leading-snug">${ev.customer}</h3>
-                ${ev.service ? `<p class="text-xs font-semibold text-blue-600 mt-1">${ev.service}</p>` : ''}
+                <div class="mt-1.5">
+                  <span class="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-0.5 rounded-md border border-blue-100">${ev.service}</span>
+                </div>
                 <div class="mt-2 flex items-center gap-2">
                   <span class="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">Durasi: ${ev.durationDays} Hari</span>
                 </div>
