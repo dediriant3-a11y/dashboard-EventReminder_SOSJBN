@@ -338,6 +338,12 @@
              d1.getDate() === d2.getDate();
     }
 
+    // Event sedang berlangsung: sudah mulai (bukan hari ini) tapi tanggal akhir belum lewat
+    function isOngoing(ev, now) {
+      const endObj = ev.endDateObj && ev.endDateObj >= ev.startDateObj ? ev.endDateObj : ev.startDateObj;
+      return getDiffDays(ev.startDateObj, now) < 0 && getDiffDays(endObj, now) >= 0;
+    }
+
     function getDiffDays(targetDate, baseDate) {
       const t1 = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
       const t2 = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
@@ -370,7 +376,7 @@
         } else if (diff > 0) {
           if (diff <= 7) upcomingCount++;
           upcomingList.push({ ...ev, diffDays: diff });
-        } else {
+        } else if (!isOngoing(ev, now)) {
           passedCount++;
         }
       });
@@ -455,9 +461,10 @@
         const isToday = isSameDay(ev.startDateObj, now);
 
         let matchesFilter = true;
-        if (filterValue === "upcoming") matchesFilter = diff >= 0 || isToday;
+        const ongoing = isOngoing(ev, now);
+        if (filterValue === "upcoming") matchesFilter = diff >= 0 || isToday || ongoing;
         else if (filterValue === "today") matchesFilter = isToday;
-        else if (filterValue === "past") matchesFilter = diff < 0 && !isToday;
+        else if (filterValue === "past") matchesFilter = diff < 0 && !isToday && !ongoing;
 
         return matchesSearch && matchesFilter;
       });
@@ -479,6 +486,8 @@
             statusBadge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">HARI INI</span>`;
           } else if (diff > 0) {
             statusBadge = `<span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-semibold rounded-full">${diff} Hari Lagi</span>`;
+          } else if (isOngoing(ev, now)) {
+            statusBadge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">Berlangsung</span>`;
           } else {
             statusBadge = `<span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-medium rounded-full">Selesai</span>`;
           }
