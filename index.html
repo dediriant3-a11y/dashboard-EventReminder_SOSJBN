@@ -131,7 +131,7 @@
         <div class="flex items-center gap-2 w-full sm:w-auto">
           <div class="relative flex-1 sm:w-64">
             <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-            <input type="text" id="searchInput" placeholder="Cari nama, lokasi..." oninput="renderAllEvents()" class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+            <input type="text" id="searchInput" placeholder="Cari pelanggan, layanan, lokasi..." oninput="renderAllEvents()" class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
           </div>
           <select id="filterSelect" onchange="renderAllEvents()" class="py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-700">
             <option value="all">Semua Waktu</option>
@@ -210,7 +210,6 @@
       document.getElementById("errorDetail").innerText = msg;
     }
 
-    // Parsing Format Tanggal DD/MM/YYYY
     function parseFlexibleDate(dateStr) {
       if (!dateStr) return null;
       dateStr = dateStr.toString().trim();
@@ -237,61 +236,61 @@
       eventsData = [];
 
       rawData.forEach((row, index) => {
-        let startDateVal = "", endDateVal = "", titleVal = "", locationVal = "", descVal = "";
+        let customerVal = "", serviceVal = "", startDateVal = "", endDateVal = "", locationVal = "", descVal = "";
 
         Object.keys(row).forEach(key => {
           const k = key.trim().toLowerCase();
           
-          if (k.includes("awal") || k.includes("start")) {
+          if (k.includes("pelanggan") || k.includes("customer") || k.includes("klien") || k.includes("client")) {
+            customerVal = row[key];
+          } else if (k.includes("layanan") || k.includes("service") || k.includes("kegiatan") || k.includes("acara")) {
+            serviceVal = row[key];
+          } else if (k.includes("awal") || k.includes("start")) {
             startDateVal = row[key];
           } else if (k.includes("akhir") || k.includes("end")) {
             endDateVal = row[key];
           } else if (!startDateVal && (k.includes("tanggal") || k.includes("date") || k.includes("tgl"))) {
             startDateVal = row[key];
-          }
-          
-          if (k.includes("kegiatan") || k.includes("event") || k.includes("nama") || k.includes("acara") || k.includes("title")) {
-            titleVal = row[key];
-          } else if (k.includes("lokasi") || k.includes("tempat") || k.includes("location")) {
+          } else if (k.includes("lokasi") || k.includes("tempat") || k.includes("location") || k.includes("kota")) {
             locationVal = row[key];
-          } else if (k.includes("keterangan") || k.includes("deskripsi") || k.includes("desc") || k.includes("info")) {
+          } else if (k.includes("keterangan") || k.includes("deskripsi") || k.includes("desc")) {
             descVal = row[key];
           }
         });
 
-        // Fallback ke urutan kolom jika header tidak terdeteksi
+        // Fallback jika header tidak terdeteksi otomatis
         const keys = Object.keys(row);
-        if (!startDateVal && keys[0]) startDateVal = row[keys[0]];
-        if (!endDateVal && keys[1] && keys[1].toLowerCase().includes("akhir")) endDateVal = row[keys[1]];
-        if (!titleVal) titleVal = row[keys[1]] || row[keys[2]] || "";
+        if (!startDateVal) startDateVal = row[keys[0]] || "";
+        if (!endDateVal) endDateVal = row[keys[1]] || "";
+        if (!customerVal) customerVal = row[keys[2]] || row[keys[3]] || "Pelanggan";
+        if (!serviceVal) serviceVal = row[keys[3]] || row[keys[4]] || "";
 
-        if (titleVal && startDateVal) {
-          const startParsed = parseFlexibleDate(startDateVal);
-          const endParsed = parseFlexibleDate(endDateVal);
+        const startParsed = parseFlexibleDate(startDateVal);
+        const endParsed = parseFlexibleDate(endDateVal);
 
-          if (startParsed) {
-            let durationDays = 1;
-            if (endParsed && endParsed >= startParsed) {
-              const diffTime = Math.abs(endParsed - startParsed);
-              durationDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-            }
-
-            eventsData.push({
-              id: index + 1,
-              title: titleVal.trim(),
-              startDateObj: startParsed,
-              endDateObj: endParsed,
-              rawStartDate: startDateVal,
-              rawEndDate: endDateVal,
-              durationDays: durationDays,
-              location: locationVal ? locationVal.trim() : "",
-              description: descVal ? descVal.trim() : ""
-            });
+        if (startParsed) {
+          let durationDays = 1;
+          if (endParsed && endParsed >= startParsed) {
+            const diffTime = Math.abs(endParsed - startParsed);
+            durationDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
           }
+
+          eventsData.push({
+            id: index + 1,
+            customer: customerVal ? customerVal.trim() : "Tanpa Nama",
+            service: serviceVal ? serviceVal.trim() : "Layanan",
+            startDateObj: startParsed,
+            endDateObj: endParsed,
+            rawStartDate: startDateVal,
+            rawEndDate: endDateVal,
+            durationDays: durationDays,
+            location: locationVal ? locationVal.trim() : "",
+            description: descVal ? descVal.trim() : ""
+          });
         }
       });
 
-      // Sortir Berdasarkan Tanggal Awal Terdekat
+      // Sortir berdasarkan tanggal awal terdekat
       eventsData.sort((a, b) => a.startDateObj - b.startDateObj);
 
       updateStatsAndHighlights();
@@ -346,7 +345,7 @@
       document.getElementById("statUpcoming").innerText = upcomingCount;
       document.getElementById("statPassed").innerText = passedCount;
 
-      // Render Section Hari Ini
+      // Event Hari Ini
       const todayContainer = document.getElementById("todayEventsContainer");
       if (todayList.length === 0) {
         todayContainer.innerHTML = `
@@ -362,14 +361,14 @@
               <span class="inline-block px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold tracking-wider uppercase rounded-full">HARI INI</span>
               <span class="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-md">Durasi: ${ev.durationDays} Hari</span>
             </div>
-            <h3 class="text-base font-bold text-slate-900">${ev.title}</h3>
+            <h3 class="text-base font-bold text-slate-900">${ev.customer}</h3>
+            ${ev.service ? `<p class="text-xs font-semibold text-blue-600 mt-0.5">${ev.service}</p>` : ''}
             ${ev.location ? `<p class="text-xs text-slate-500 flex items-center gap-1.5 mt-2"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-600"></i> ${ev.location}</p>` : ''}
-            ${ev.description ? `<p class="text-xs text-slate-600 mt-2 bg-slate-50 p-2 rounded-lg">${ev.description}</p>` : ''}
           </div>
         `).join("");
       }
 
-      // Render Section Akan Datang Terdekat
+      // Akan Datang Terdekat
       const upcomingContainer = document.getElementById("upcomingEventsContainer");
       if (upcomingList.length === 0) {
         upcomingContainer.innerHTML = `
@@ -383,7 +382,8 @@
         upcomingContainer.innerHTML = topUpcoming.map(ev => `
           <div class="bg-slate-50 hover:bg-slate-100/80 transition-all p-3.5 rounded-xl border border-slate-200/60 flex justify-between items-center">
             <div>
-              <h3 class="text-sm font-bold text-slate-800">${ev.title}</h3>
+              <h3 class="text-sm font-bold text-slate-800">${ev.customer}</h3>
+              ${ev.service ? `<p class="text-xs font-medium text-blue-600">${ev.service}</p>` : ''}
               <p class="text-xs text-slate-500 flex items-center gap-1 mt-1">
                 <i data-lucide="calendar" class="w-3.5 h-3.5"></i> ${formatDateIndo(ev.startDateObj)}
                 <span class="text-slate-400">•</span> ${ev.durationDays} Hari
@@ -409,7 +409,8 @@
       const now = new Date();
 
       const filtered = eventsData.filter(ev => {
-        const matchesSearch = ev.title.toLowerCase().includes(searchQuery) || 
+        const matchesSearch = ev.customer.toLowerCase().includes(searchQuery) || 
+                              ev.service.toLowerCase().includes(searchQuery) ||
                               ev.location.toLowerCase().includes(searchQuery) ||
                               ev.description.toLowerCase().includes(searchQuery);
 
@@ -459,7 +460,8 @@
                   </span>
                   ${statusBadge}
                 </div>
-                <h3 class="text-sm font-bold text-slate-900 leading-snug">${ev.title}</h3>
+                <h3 class="text-base font-bold text-slate-900 leading-snug">${ev.customer}</h3>
+                ${ev.service ? `<p class="text-xs font-semibold text-blue-600 mt-1">${ev.service}</p>` : ''}
                 <div class="mt-2 flex items-center gap-2">
                   <span class="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">Durasi: ${ev.durationDays} Hari</span>
                 </div>
