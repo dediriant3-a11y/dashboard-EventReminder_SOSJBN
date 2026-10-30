@@ -36,7 +36,7 @@
   <!-- Main Container -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
     
-    <!-- Alert Status Loading / Error -->
+    <!-- Alert Status -->
     <div id="statusAlert" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 text-amber-800 text-sm">
       <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
       <div>
@@ -180,7 +180,6 @@
           if (!resp.ok) throw new Error("HTTP error " + resp.status);
           textData = await resp.text();
         } catch (e1) {
-          console.warn("Direct fetch failed, trying CORS Proxy...", e1);
           const proxyResp = await fetch(CORS_PROXY + encodeURIComponent(CSV_URL));
           if (!proxyResp.ok) throw new Error("Proxy fetch failed");
           textData = await proxyResp.text();
@@ -237,26 +236,25 @@
     function parseAndProcessEvents(rows) {
       eventsData = [];
 
-      rows.forEach((rowArray, index) => {
-        if (!rowArray || rowArray.length === 0) return;
-
-        // Abaikan baris header
-        const firstCell = String(rowArray[0] || '').toLowerCase();
-        if (firstCell.includes('tanggal') || firstCell.includes('awal') || firstCell.includes('tgl')) {
-          return;
-        }
+      // Mulai dari i = 1 untuk MELEWATI BARIS PERTAMA (Header / Judul Kolom Google Sheets)
+      for (let i = 1; i < rows.length; i++) {
+        let rowArray = rows[i];
+        if (!rowArray || rowArray.length === 0) continue;
 
         let startDateVal = String(rowArray[0] || '').trim();
         let endDateVal = String(rowArray[1] || '').trim();
         let customerVal = String(rowArray[2] || '').trim();
 
+        // Jika baris kosong atau tidak ada nama pelanggan, lewati
+        if (!customerVal && !startDateVal) continue;
+
         let bandwidthVal = "";
         let locationVal = "";
-        let serviceVal = "astinet";
+        let serviceVal = "astinet"; // Default layanan
 
-        // Iterasi kolom sisa untuk memisahkan Bandwidth vs Lokasi
-        for (let i = 3; i < rowArray.length; i++) {
-          let val = String(rowArray[i] || '').trim();
+        // Deteksi cerdas kolom berikutnya (Bandwidth vs Lokasi)
+        for (let j = 3; j < rowArray.length; j++) {
+          let val = String(rowArray[j] || '').trim();
           if (!val) continue;
 
           if (val.toLowerCase().includes("mbps") || val.toLowerCase().includes("gbps")) {
@@ -269,28 +267,26 @@
         const startParsed = parseFlexibleDate(startDateVal);
         const endParsed = parseFlexibleDate(endDateVal);
 
-        // Jika baris memiliki minimal nama pelanggan atau tanggal
-        if (customerVal || startParsed) {
+        if (startParsed) {
           let durationDays = 1;
-          if (startParsed && endParsed && endParsed >= startParsed) {
+          if (endParsed && endParsed >= startParsed) {
             const diffTime = Math.abs(endParsed - startParsed);
             durationDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
           }
 
           eventsData.push({
-            id: index + 1,
+            id: i,
             customer: customerVal || "Tanpa Nama Pelanggan",
             service: serviceVal,
             bandwidth: bandwidthVal,
-            startDateObj: startParsed || new Date(),
-            rawStartDate: startDateVal,
+            startDateObj: startParsed,
+            endDateObj: endParsed,
             durationDays: durationDays,
             location: locationVal
           });
         }
-      });
+      }
 
-      // Sortir berdasarkan tanggal
       eventsData.sort((a, b) => a.startDateObj - b.startDateObj);
 
       updateStatsAndHighlights();
@@ -309,19 +305,15 @@
       return Math.round((t1 - t2) / (1000 * 60 * 60 * 24));
     }
 
-    function formatDateIndo(dateObj, rawStr) {
-      if (!dateObj || isNaN(dateObj.getTime())) return rawStr || "";
+    function formatDateIndo(dateObj) {
+      if (!dateObj || isNaN(dateObj.getTime())) return "";
       const options = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
       return dateObj.toLocaleDateString('id-ID', options);
     }
 
-    // TAMPILAN SESUAI FORMAT PERSIS:
-    // Baris 1: Nama Pelanggan & Status
-    // Baris 2: Layanan (astinet) + Bandwidth (50 Mbps)
-    // Baris 3: Tanggal + Durasi Hari
-    // Baris 4: Lokasi Layanan (Paling Bawah)
+    // STRUKTUR KARTU EVENT SESUAI PERMINTAAN ANDA
     function createCardHTML(ev, statusBadgeHTML) {
-      const dateText = formatDateIndo(ev.startDateObj, ev.rawStartDate);
+      const dateText = formatDateIndo(ev.startDateObj);
 
       return `
         <div class="bg-white border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col space-y-3">
@@ -332,7 +324,7 @@
             ${statusBadgeHTML}
           </div>
 
-          <!-- BARIS 2: Layanan + Bandwidth -->
+          <!-- BARIS 2: Layanan (astinet) + Bandwidth (misal: 30 Mbps) -->
           <div class="flex items-center gap-2">
             <span class="text-lg font-black tracking-tight text-slate-900 lowercase">${ev.service}</span>
             ${ev.bandwidth ? `<span class="bg-blue-50 text-blue-600 font-bold text-xs px-2.5 py-0.5 rounded border border-blue-100">${ev.bandwidth}</span>` : ''}
@@ -389,7 +381,7 @@
       document.getElementById("statUpcoming").innerText = upcomingCount;
       document.getElementById("statPassed").innerText = passedCount;
 
-      // Render Section Hari Ini
+      // Render Hari Ini
       const todayContainer = document.getElementById("todayEventsContainer");
       if (todayList.length === 0) {
         todayContainer.innerHTML = `
@@ -405,7 +397,7 @@
         }).join("");
       }
 
-      // Render Section Akan Datang Terdekat
+      // Render Mendatang
       const upcomingContainer = document.getElementById("upcomingEventsContainer");
       const listToRender = upcomingList.length > 0 ? upcomingList.slice(0, 3) : eventsData.slice(0, 3);
 
