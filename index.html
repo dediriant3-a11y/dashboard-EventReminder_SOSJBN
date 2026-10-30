@@ -234,12 +234,29 @@
 
     function parseAndProcessEvents(rawData) {
       eventsData = [];
+      if (rawData.length) console.log("Header kolom terdeteksi:", Object.keys(rawData[0]));
 
       rawData.forEach((row, index) => {
-        let customerVal = "", serviceVal = "", startDateVal = "", endDateVal = "", locationVal = "", descVal = "";
+        let layananVal = "", bandwidthVal = "", customerVal = "", serviceVal = "", startDateVal = "", endDateVal = "", locationVal = "", descVal = "";
 
         Object.keys(row).forEach(key => {
           const k = key.trim().toLowerCase();
+
+          // Kolom Lokasi (dicek pertama karena headernya "Lokasi layanan")
+          if (/lokasi|tempat|location|kota/.test(k)) {
+            locationVal = row[key];
+            return;
+          }
+          // Kolom Bandwidth (termasuk ejaan "bandwitch", "bw", dll)
+          if (/bandw|^bw$|\bbw\b|kapasitas|kecepatan|speed|mbps/.test(k)) {
+            bandwidthVal = row[key];
+            return;
+          }
+          // Kolom Layanan / Produk / Paket
+          if (/layanan|service|jenis|produk|paket/.test(k) && !k.includes("pelanggan") && !k.includes("customer")) {
+            layananVal = row[key];
+            return;
+          }
           
           if (k.includes("pelanggan") || k.includes("customer") || k.includes("klien") || k.includes("client")) {
             customerVal = row[key];
@@ -262,8 +279,8 @@
         const keys = Object.keys(row);
         if (!startDateVal) startDateVal = row[keys[0]] || "";
         if (!endDateVal) endDateVal = row[keys[1]] || "";
-        if (!customerVal) customerVal = row[keys[2]] || row[keys[3]] || "Pelanggan";
-        if (!serviceVal) serviceVal = row[keys[3]] || row[keys[4]] || "";
+        if (!customerVal) customerVal = row[keys[1]] || "Pelanggan";
+        serviceVal = layananVal;
 
         const startParsed = parseFlexibleDate(startDateVal);
         const endParsed = parseFlexibleDate(endDateVal);
@@ -278,7 +295,9 @@
           eventsData.push({
             id: index + 1,
             customer: customerVal ? customerVal.trim() : "Tanpa Nama",
-            service: serviceVal ? serviceVal.trim() : "Layanan",
+            service: serviceVal ? serviceVal.trim() : "",
+            layanan: layananVal ? layananVal.toString().trim() : "",
+            bandwidth: bandwidthVal ? bandwidthVal.toString().trim() : "",
             startDateObj: startParsed,
             endDateObj: endParsed,
             rawStartDate: startDateVal,
@@ -295,6 +314,16 @@
 
       updateStatsAndHighlights();
       renderAllEvents();
+    }
+
+    // Baris Layanan + Bandwidth (ditampilkan di bawah nama pelanggan)
+    function layananBandwidthHTML(ev) {
+      if (!ev.layanan && !ev.bandwidth) return '';
+      return `
+        <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+          ${ev.layanan ? `<span class="inline-flex items-center gap-1 text-xs font-semibold text-slate-700"><i data-lucide="server" class="w-3.5 h-3.5 text-slate-400"></i>${ev.layanan}</span>` : ''}
+          ${ev.bandwidth ? `<span class="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md"><i data-lucide="gauge" class="w-3 h-3"></i>${ev.bandwidth}</span>` : ''}
+        </div>`;
     }
 
     function isSameDay(d1, d2) {
@@ -362,7 +391,7 @@
               <span class="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-md">Durasi: ${ev.durationDays} Hari</span>
             </div>
             <h3 class="text-base font-bold text-slate-900">${ev.customer}</h3>
-            ${ev.service ? `<p class="text-xs font-semibold text-blue-600 mt-0.5">${ev.service}</p>` : ''}
+            ${layananBandwidthHTML(ev)}
             ${ev.location ? `<p class="text-xs text-slate-500 flex items-center gap-1.5 mt-2"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-600"></i> ${ev.location}</p>` : ''}
           </div>
         `).join("");
@@ -383,7 +412,7 @@
           <div class="bg-slate-50 hover:bg-slate-100/80 transition-all p-3.5 rounded-xl border border-slate-200/60 flex justify-between items-center">
             <div>
               <h3 class="text-sm font-bold text-slate-800">${ev.customer}</h3>
-              ${ev.service ? `<p class="text-xs font-medium text-blue-600">${ev.service}</p>` : ''}
+              ${layananBandwidthHTML(ev)}
               <p class="text-xs text-slate-500 flex items-center gap-1 mt-1">
                 <i data-lucide="calendar" class="w-3.5 h-3.5"></i> ${formatDateIndo(ev.startDateObj)}
                 <span class="text-slate-400">•</span> ${ev.durationDays} Hari
@@ -411,6 +440,8 @@
       const filtered = eventsData.filter(ev => {
         const matchesSearch = ev.customer.toLowerCase().includes(searchQuery) || 
                               ev.service.toLowerCase().includes(searchQuery) ||
+                              ev.layanan.toLowerCase().includes(searchQuery) ||
+                              ev.bandwidth.toLowerCase().includes(searchQuery) ||
                               ev.location.toLowerCase().includes(searchQuery) ||
                               ev.description.toLowerCase().includes(searchQuery);
 
@@ -461,7 +492,7 @@
                   ${statusBadge}
                 </div>
                 <h3 class="text-base font-bold text-slate-900 leading-snug">${ev.customer}</h3>
-                ${ev.service ? `<p class="text-xs font-semibold text-blue-600 mt-1">${ev.service}</p>` : ''}
+                ${layananBandwidthHTML(ev)}
                 <div class="mt-2 flex items-center gap-2">
                   <span class="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">Durasi: ${ev.durationDays} Hari</span>
                 </div>
