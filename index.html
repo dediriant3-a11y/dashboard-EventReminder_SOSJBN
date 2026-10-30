@@ -237,9 +237,9 @@
 
       rawData.forEach((row, index) => {
         const keys = Object.keys(row);
-        let startDateVal = "", endDateVal = "", customerVal = "", serviceVal = "", locationVal = "", descVal = "";
+        let startDateVal = "", endDateVal = "", customerVal = "", serviceVal = "", bwVal = "", locationVal = "", descVal = "";
 
-        // Pindai kolom secara dinamis berdasarkan nama header
+        // Pindai nama header secara fleksibel
         keys.forEach(key => {
           const k = key.trim().toLowerCase();
           const val = row[key] ? row[key].trim() : "";
@@ -247,20 +247,33 @@
           if (k.includes("awal") || k.includes("start")) startDateVal = val;
           else if (k.includes("akhir") || k.includes("end")) endDateVal = val;
           else if (k.includes("pelanggan") || k.includes("customer") || k.includes("klien")) customerVal = val;
-          else if (k.includes("layanan") || k.includes("service") || k.includes("jenis")) serviceVal = val;
+          else if (k.includes("layanan") || k.includes("service") || k.includes("produk")) serviceVal = val;
+          else if (k.includes("bandwidth") || k.includes("bw") || k.includes("speed")) bwVal = val;
           else if (k.includes("lokasi") || k.includes("tempat") || k.includes("kota")) locationVal = val;
           else if (k.includes("keterangan") || k.includes("deskripsi")) descVal = val;
         });
 
-        // Fallback berdasarkan urutan kolom standar spreadsheet jika nama header unik
+        // Fallback berdasarkan indeks kolom jika tidak terdeteksi via nama
         if (!startDateVal && keys[0]) startDateVal = row[keys[0]];
         if (!endDateVal && keys[1]) endDateVal = row[keys[1]];
         if (!customerVal && keys[2]) customerVal = row[keys[2]];
         if (!serviceVal && keys[3]) serviceVal = row[keys[3]];
-        if (!locationVal && keys[4]) locationVal = row[keys[4]];
+        if (!bwVal && keys[4] && !keys[4].toLowerCase().includes("lokasi")) bwVal = row[keys[4]];
 
         const startParsed = parseFlexibleDate(startDateVal);
         const endParsed = parseFlexibleDate(endDateVal);
+
+        // Gabungkan Layanan + Bandwidth (contoh: "Astinet 100Mbps")
+        let combinedService = "";
+        if (serviceVal && bwVal) {
+          combinedService = `${serviceVal} ${bwVal}`;
+        } else if (serviceVal) {
+          combinedService = serviceVal;
+        } else if (bwVal) {
+          combinedService = bwVal;
+        } else {
+          combinedService = "Layanan";
+        }
 
         if (startParsed) {
           let durationDays = 1;
@@ -272,7 +285,7 @@
           eventsData.push({
             id: index + 1,
             customer: customerVal || "Tanpa Nama",
-            service: serviceVal || "Layanan Tidak Ditentukan",
+            service: combinedService,
             startDateObj: startParsed,
             endDateObj: endParsed,
             rawStartDate: startDateVal,
@@ -284,7 +297,7 @@
         }
       });
 
-      // Sortir berdasarkan tanggal awal terdekat
+      // Sortir tanggal awal terdekat
       eventsData.sort((a, b) => a.startDateObj - b.startDateObj);
 
       updateStatsAndHighlights();
@@ -350,16 +363,23 @@
         `;
       } else {
         todayContainer.innerHTML = todayList.map(ev => `
-          <div class="bg-white p-4 rounded-xl border border-emerald-200/80 shadow-sm">
-            <div class="flex justify-between items-center mb-2">
-              <span class="inline-block px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold tracking-wider uppercase rounded-full">HARI INI</span>
-              <span class="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-md">Durasi: ${ev.durationDays} Hari</span>
+          <div class="bg-white p-4 rounded-xl border border-emerald-200/80 shadow-sm flex flex-col justify-between">
+            <div>
+              <div class="flex justify-between items-center mb-2">
+                <span class="inline-block px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold tracking-wider uppercase rounded-full">HARI INI</span>
+                <span class="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-md">Durasi: ${ev.durationDays} Hari</span>
+              </div>
+              <h3 class="text-base font-bold text-slate-900">${ev.customer}</h3>
+              <div class="mt-1">
+                <span class="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-0.5 rounded-md border border-blue-100">${ev.service}</span>
+              </div>
             </div>
-            <h3 class="text-base font-bold text-slate-900">${ev.customer}</h3>
-            <div class="mt-1">
-              <span class="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-0.5 rounded-md border border-blue-100">${ev.service}</span>
-            </div>
-            ${ev.location ? `<p class="text-xs text-slate-500 flex items-center gap-1.5 mt-2.5"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-600"></i> ${ev.location}</p>` : ''}
+            ${ev.location ? `
+              <div class="mt-3 pt-2.5 border-t border-slate-100 text-xs text-slate-500 flex items-center gap-1.5">
+                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0"></i>
+                <span class="truncate font-medium">${ev.location}</span>
+              </div>
+            ` : ''}
           </div>
         `).join("");
       }
@@ -376,23 +396,30 @@
       } else {
         const topUpcoming = upcomingList.slice(0, 3);
         upcomingContainer.innerHTML = topUpcoming.map(ev => `
-          <div class="bg-slate-50 hover:bg-slate-100/80 transition-all p-3.5 rounded-xl border border-slate-200/60 flex justify-between items-center">
-            <div>
-              <h3 class="text-sm font-bold text-slate-800">${ev.customer}</h3>
-              <div class="mt-0.5">
-                <span class="inline-block bg-blue-50 text-blue-700 text-[11px] font-semibold px-2 py-0.5 rounded border border-blue-100">${ev.service}</span>
+          <div class="bg-slate-50 hover:bg-slate-100/80 transition-all p-3.5 rounded-xl border border-slate-200/60 flex flex-col justify-between">
+            <div class="flex justify-between items-start gap-2">
+              <div>
+                <h3 class="text-sm font-bold text-slate-800">${ev.customer}</h3>
+                <div class="mt-0.5">
+                  <span class="inline-block bg-blue-50 text-blue-700 text-[11px] font-semibold px-2 py-0.5 rounded border border-blue-100">${ev.service}</span>
+                </div>
+                <p class="text-xs text-slate-500 flex items-center gap-1 mt-1.5">
+                  <i data-lucide="calendar" class="w-3.5 h-3.5"></i> ${formatDateIndo(ev.startDateObj)}
+                  <span class="text-slate-400">•</span> Durasi ${ev.durationDays} Hari
+                </p>
               </div>
-              <p class="text-xs text-slate-500 flex items-center gap-1 mt-1.5">
-                <i data-lucide="calendar" class="w-3.5 h-3.5"></i> ${formatDateIndo(ev.startDateObj)}
-                <span class="text-slate-400">•</span> ${ev.durationDays} Hari
-                ${ev.location ? `• <i data-lucide="map-pin" class="w-3.5 h-3.5 ml-0.5"></i> ${ev.location}` : ''}
-              </p>
+              <div class="text-right flex-shrink-0">
+                <span class="inline-block px-2.5 py-1 bg-amber-100 text-amber-800 font-bold text-xs rounded-lg">
+                  ${ev.diffDays} Hari Lagi
+                </span>
+              </div>
             </div>
-            <div class="text-right flex-shrink-0 ml-3">
-              <span class="inline-block px-2.5 py-1 bg-amber-100 text-amber-800 font-bold text-xs rounded-lg">
-                ${ev.diffDays} Hari Lagi
-              </span>
-            </div>
+            ${ev.location ? `
+              <div class="mt-2.5 pt-2 border-t border-slate-200/60 text-xs text-slate-500 flex items-center gap-1">
+                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400 flex-shrink-0"></i>
+                <span class="truncate">${ev.location}</span>
+              </div>
+            ` : ''}
           </div>
         `).join("");
       }
@@ -471,7 +498,7 @@
               ${ev.location ? `
                 <div class="mt-4 pt-3 border-t border-slate-100 flex items-center text-xs text-slate-500">
                   <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400 mr-1.5 flex-shrink-0"></i>
-                  <span class="truncate">${ev.location}</span>
+                  <span class="truncate font-medium">${ev.location}</span>
                 </div>
               ` : ''}
             </div>
