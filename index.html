@@ -240,7 +240,7 @@
         
         let startDateVal = "", endDateVal = "", customerVal = "", serviceVal = "", bwVal = "", locationVal = "", descVal = "";
 
-        // Pindai nama header
+        // Scanning nama header
         keys.forEach(key => {
           const k = key.trim().toLowerCase();
           const val = row[key] ? row[key].trim() : "";
@@ -254,7 +254,8 @@
           else if (k.includes("keterangan") || k.includes("deskripsi")) descVal = val;
         });
 
-        // Fallback berdasarkan urutan posisi kolom spreadsheet
+        // Fallback presisi berdasarkan urutan kolom standar spreadsheet
+        // Kolom 0 = Tgl Awal, Kolom 1 = Tgl Akhir, Kolom 2 = Pelanggan, Kolom 3 = Layanan, Kolom 4 = Bandwidth, Kolom 5 = Lokasi
         if (!startDateVal && keys[0]) startDateVal = row[keys[0]];
         if (!endDateVal && keys[1]) endDateVal = row[keys[1]];
         if (!customerVal && keys[2]) customerVal = row[keys[2]];
@@ -275,7 +276,7 @@
           eventsData.push({
             id: index + 1,
             customer: customerVal || "Tanpa Nama Pelanggan",
-            service: serviceVal ? serviceVal.toLowerCase() : "astinet",
+            service: serviceVal || "astinet",
             bandwidth: bwVal || "",
             startDateObj: startParsed,
             endDateObj: endParsed,
@@ -313,26 +314,26 @@
       return dateObj.toLocaleDateString('id-ID', options);
     }
 
-    // Helper untuk merender struktur card sesuai contoh gambar
+    // Builder Kartu Event dengan Hirarki Tampilan Persis Sesuai Gambar
     function createCardHTML(ev, statusBadgeHTML) {
       const dateText = formatDateIndo(ev.startDateObj);
 
       return `
-        <div class="bg-white border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-3">
+        <div class="bg-white border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col space-y-3">
           
-          <!-- Baris 1: Nama Pelanggan + Status Badge -->
+          <!-- BARIS 1: Nama Pelanggan (Kiri) & Status Badge (Kanan) -->
           <div class="flex justify-between items-start gap-2">
             <h3 class="text-base font-bold text-slate-900">${ev.customer}</h3>
             ${statusBadgeHTML}
           </div>
 
-          <!-- Baris 2: Layanan (astinet) + Bandwidth (50 Mbps) -->
+          <!-- BARIS 2: Layanan + Bandwidth -->
           <div class="flex items-center gap-2">
-            <span class="text-lg font-black tracking-tight text-slate-900 lowercase">${ev.service}</span>
-            ${ev.bandwidth ? `<span class="bg-blue-50 text-blue-600 font-bold text-xs px-2.5 py-0.5 rounded-md border border-blue-100">${ev.bandwidth}</span>` : ''}
+            <span class="text-base font-extrabold text-slate-900 lowercase">${ev.service}</span>
+            ${ev.bandwidth ? `<span class="bg-blue-50 text-blue-600 font-bold text-xs px-2.5 py-0.5 rounded border border-blue-100">${ev.bandwidth}</span>` : ''}
           </div>
 
-          <!-- Baris 3: Tanggal + Durasi -->
+          <!-- BARIS 3: Tanggal + Durasi Hari -->
           <div class="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
             <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>
             <span>${dateText}</span>
@@ -340,10 +341,10 @@
             <span>Durasi ${ev.durationDays} Hari</span>
           </div>
 
-          <!-- Baris 4: Lokasi (Paling Bawah) -->
+          <!-- BARIS 4: Lokasi Layanan (Paling Bawah) -->
           ${ev.location ? `
             <div class="pt-2 border-t border-slate-100">
-              <span class="text-xs font-bold text-blue-600 bg-blue-50/70 px-2.5 py-1 rounded uppercase tracking-wider inline-block">
+              <span class="text-xs font-bold text-blue-600 bg-blue-50/80 px-2.5 py-1 rounded uppercase tracking-wider inline-block">
                 ${ev.location}
               </span>
             </div>
