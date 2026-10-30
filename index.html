@@ -1,576 +1,457 @@
 <!DOCTYPE html>
-<html lang="id" class="h-full">
+<html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Pengingat Event & Kegiatan</title>
-    
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            500: '#0284c7',
-                            600: '#0369a1',
-                            700: '#075985',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    
-    <!-- PapaParse CDN for parsing CSV -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <style>
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 9999px;
-        }
-        .dark ::-webkit-scrollbar-thumb {
-            background: #475569;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Reminder - Dashboard Kegiatan</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
 </head>
-<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-full flex flex-col transition-colors duration-200">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
-    <!-- Navbar -->
-    <header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700/60 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <!-- Logo & Title -->
-                <div class="flex items-center space-x-3">
-                    <div class="p-2 bg-brand-500 text-white rounded-xl shadow-md shadow-brand-500/20">
-                        <i data-lucide="calendar-heart" class="w-6 h-6"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-lg font-bold leading-tight">EventReminder</h1>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Sinkron dengan Google Sheets</p>
-                    </div>
-                </div>
-
-                <!-- Right Controls -->
-                <div class="flex items-center space-x-2">
-                    <button id="btnRefresh" onclick="fetchData()" class="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-lg transition-all" title="Refresh Data">
-                        <i data-lucide="refresh-cw" id="refreshIcon" class="w-4 h-4"></i>
-                        <span class="hidden sm:inline">Refresh</span>
-                    </button>
-                    
-                    <button id="themeToggle" onclick="toggleDarkMode()" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all" title="Ubah Mode">
-                        <i data-lucide="moon" id="themeIcon" class="w-4 h-4"></i>
-                    </button>
-                </div>
-            </div>
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-blue-600 text-white rounded-xl shadow-md shadow-blue-500/20">
+          <i data-lucide="calendar-heart" class="w-6 h-6"></i>
         </div>
-    </header>
+        <div>
+          <h1 class="text-xl font-bold text-slate-900 tracking-tight">EventReminder</h1>
+          <p class="text-xs text-slate-500">Sinkron dengan Google Sheets</p>
+        </div>
+      </div>
+      <button id="refreshBtn" onclick="loadData()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg flex items-center gap-2 transition-all">
+        <i data-lucide="refresh-cw" class="w-4 h-4" id="refreshIcon"></i>
+        <span>Refresh</span>
+      </button>
+    </div>
+  </header>
 
-    <!-- Main Content -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
+    
+    <!-- Warning Alert jika Error Data -->
+    <div id="errorAlert" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 text-amber-800 text-sm">
+      <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
+      <div>
+        <p class="font-semibold">Gagal mengambil data dari Google Sheets secara langsung.</p>
+        <p id="errorDetail" class="text-xs text-amber-700 mt-1"></p>
+      </div>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
+        <div class="p-3 bg-blue-50 text-blue-600 rounded-xl">
+          <i data-lucide="calendar" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Event</p>
+          <p id="statTotal" class="text-2xl font-bold text-slate-800">0</p>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
+        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+          <i data-lucide="bell" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hari Ini</p>
+          <p id="statToday" class="text-2xl font-bold text-emerald-600">0</p>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
+        <div class="p-3 bg-amber-50 text-amber-600 rounded-xl">
+          <i data-lucide="clock" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Segera (7 Hari)</p>
+          <p id="statUpcoming" class="text-2xl font-bold text-amber-600">0</p>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
+        <div class="p-3 bg-slate-100 text-slate-600 rounded-xl">
+          <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Selesai/Lalu</p>
+          <p id="statPassed" class="text-2xl font-bold text-slate-600">0</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Highlight Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      <!-- Event Hari Ini -->
+      <div class="bg-gradient-to-br from-emerald-50 to-teal-50/30 border border-emerald-200/80 rounded-2xl p-6 shadow-sm flex flex-col">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-base font-bold text-emerald-950 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            Event Hari Ini
+          </h2>
+          <span id="todayDateStr" class="text-xs font-semibold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full"></span>
+        </div>
+        <div id="todayEventsContainer" class="space-y-3 flex-1 flex flex-col justify-center">
+          <!-- Loaded dynamically -->
+        </div>
+      </div>
+
+      <!-- Akan Datang Terdekat -->
+      <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i data-lucide="sparkles" class="w-5 h-5 text-amber-500"></i>
+            Akan Datang Terdekat
+          </h2>
+          <span class="text-xs text-slate-400 font-medium">Countdown Event</span>
+        </div>
+        <div id="upcomingEventsContainer" class="space-y-3 flex-1 flex flex-col justify-center">
+          <!-- Loaded dynamically -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Filter & All Events -->
+    <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm space-y-6">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Daftar Semua Kegiatan</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Kelola dan lihat jadwal seluruh kegiatan dari Google Sheets</p>
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <div class="relative flex-1 sm:w-64">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="text" id="searchInput" placeholder="Cari nama, lokasi..." oninput="renderAllEvents()" class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+          </div>
+          <select id="filterSelect" onchange="renderAllEvents()" class="py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-700">
+            <option value="all">Semua Waktu</option>
+            <option value="upcoming" selected>Mendatangkan & Hari Ini</option>
+            <option value="today">Hari Ini Saja</option>
+            <option value="past">Sudah Selesai</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="allEventsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Loaded dynamically -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-6 mt-12">
+    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+      <p>Diperbarui otomatis dari Google Sheets CSV • <a href="https://docs.google.com/spreadsheets/d/116_OW7urpjbC_pvBmqeh2nVadBCZ0Cv0IT-eXHviMY0/edit?gid=0#gid=0" target="_blank" class="text-blue-600 hover:underline">Buka Spreadsheet</a></p>
+    </div>
+  </footer>
+
+  <script>
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXJ1LhQ4SOyXkUp4Jt_ZLpoJD2h8l-BhYQhNEFB_jO8DAX8iFeXxnYSOME5JCM8xW5p19HsMKSE1UP/pub?output=csv";
+    const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+
+    let eventsData = [];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      loadData();
+    });
+
+    async function loadData() {
+      const refreshIcon = document.getElementById("refreshIcon");
+      if (refreshIcon) refreshIcon.classList.add("animate-spin");
+
+      document.getElementById("errorAlert").classList.add("hidden");
+
+      try {
+        let textData = "";
         
-        <!-- Quick Stats Cards -->
-        <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex items-center space-x-4">
-                <div class="p-3 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-xl">
-                    <i data-lucide="calendar" class="w-6 h-6"></i>
-                </div>
-                <div>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Total Event</p>
-                    <h3 id="statTotal" class="text-xl font-bold">0</h3>
-                </div>
-            </div>
+        // Coba Fetch Direct Google Sheets CSV
+        try {
+          const resp = await fetch(CSV_URL + "&t=" + new Date().getTime());
+          if (!resp.ok) throw new Error("HTTP error " + resp.status);
+          textData = await resp.text();
+        } catch (e1) {
+          // Fallback via CORS Proxy jika direct request diblokir
+          console.warn("Direct fetch failed, trying CORS Proxy...", e1);
+          const proxyResp = await fetch(CORS_PROXY + encodeURIComponent(CSV_URL));
+          if (!proxyResp.ok) throw new Error("Proxy fetch failed");
+          textData = await proxyResp.text();
+        }
 
-            <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex items-center space-x-4">
-                <div class="p-3 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-xl">
-                    <i data-lucide="bell" class="w-6 h-6"></i>
-                </div>
-                <div>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Hari Ini</p>
-                    <h3 id="statToday" class="text-xl font-bold text-emerald-600 dark:text-emerald-400">0</h3>
-                </div>
-            </div>
+        Papa.parse(textData, {
+          header: true,
+          skipEmptyLines: true,
+          complete: function(results) {
+            parseAndProcessEvents(results.data);
+            if (refreshIcon) refreshIcon.classList.remove("animate-spin");
+          },
+          error: function(err) {
+            showError("Gagal mengurai file CSV: " + err.message);
+            if (refreshIcon) refreshIcon.classList.remove("animate-spin");
+          }
+        });
 
-            <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex items-center space-x-4">
-                <div class="p-3 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-xl">
-                    <i data-lucide="clock" class="w-6 h-6"></i>
-                </div>
-                <div>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Segera (7 Hari)</p>
-                    <h3 id="statUpcoming" class="text-xl font-bold text-amber-600 dark:text-amber-400">0</h3>
-                </div>
-            </div>
+      } catch (err) {
+        showError("Tidak dapat mengunduh data: " + err.message);
+        if (refreshIcon) refreshIcon.classList.remove("animate-spin");
+      }
+    }
 
-            <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex items-center space-x-4">
-                <div class="p-3 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl">
-                    <i data-lucide="check-circle-2" class="w-6 h-6"></i>
-                </div>
-                <div>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Selesai/Lalu</p>
-                    <h3 id="statPast" class="text-xl font-bold">0</h3>
-                </div>
-            </div>
-        </section>
+    function showError(msg) {
+      document.getElementById("errorAlert").classList.remove("hidden");
+      document.getElementById("errorDetail").innerText = msg;
+    }
 
-        <!-- Today & Upcoming Highlights Section -->
-        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            <!-- Event Hari Ini (Today's Events) -->
-            <div class="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/10 border border-emerald-200 dark:border-emerald-800/40 rounded-2xl p-5 shadow-sm">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center space-x-2">
-                        <span class="flex h-3 w-3 relative">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                        </span>
-                        <h2 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                            Event Hari Ini 
-                            <span id="currentDateBadge" class="text-xs font-normal bg-emerald-200 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 px-2 py-0.5 rounded-full"></span>
-                        </h2>
-                    </div>
-                </div>
+    // Fungsi Parsing Format Tanggal Indonesia DD/MM/YYYY
+    function parseFlexibleDate(dateStr) {
+      if (!dateStr) return null;
+      dateStr = dateStr.toString().trim();
 
-                <div id="todayList" class="space-y-3 max-h-72 overflow-y-auto pr-1">
-                    <!-- Loading Skeleton -->
-                    <div class="animate-pulse bg-white/60 dark:bg-slate-800/60 p-4 rounded-xl h-20"></div>
-                </div>
-            </div>
+      // Format DD/MM/YYYY atau DD-MM-YYYY atau DD.MM.YYYY
+      const parts = dateStr.split(/[\/\-\.]/);
+      if (parts.length === 3) {
+        let p1 = parseInt(parts[0], 10);
+        let p2 = parseInt(parts[1], 10);
+        let p3 = parseInt(parts[2], 10);
 
-            <!-- Event Mendatang (Upcoming Countdown) -->
-            <div class="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-5 shadow-sm">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                        <i data-lucide="sparkles" class="w-5 h-5 text-amber-500"></i>
-                        Akan Datang Terdekat
-                    </h2>
-                    <span class="text-xs text-slate-500 dark:text-slate-400">Countdown Event</span>
-                </div>
+        // Jika p1 adalah Hari (DD/MM/YYYY)
+        if (p1 <= 31 && p2 <= 12 && p3 >= 1000) {
+          return new Date(p3, p2 - 1, p1);
+        }
+        // Jika p3 adalah Hari (YYYY/MM/DD)
+        if (p1 >= 1000 && p2 <= 12 && p3 <= 31) {
+          return new Date(p1, p2 - 1, p3);
+        }
+      }
 
-                <div id="upcomingList" class="space-y-3 max-h-72 overflow-y-auto pr-1">
-                    <!-- Loading Skeleton -->
-                    <div class="animate-pulse bg-slate-100 dark:bg-slate-700/50 p-4 rounded-xl h-20"></div>
-                </div>
-            </div>
+      // Standar JS Date Fallback
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? null : d;
+    }
 
-        </section>
+    function parseAndProcessEvents(rawData) {
+      eventsData = [];
 
-        <!-- All Events Table/List with Filters -->
-        <section class="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-5 shadow-sm space-y-4">
-            
-            <!-- Controls Bar -->
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 class="font-bold text-lg text-slate-800 dark:text-slate-100">Daftar Semua Kegiatan</h2>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Kelola dan lihat jadwal seluruh kegiatan dari Google Sheets</p>
-                </div>
+      rawData.forEach((row, index) => {
+        // Deteksi Otomatis Header Kolom
+        let dateVal = "", titleVal = "", locationVal = "", descVal = "";
 
-                <div class="flex flex-wrap items-center gap-2">
-                    <!-- Search Input -->
-                    <div class="relative flex-1 min-w-[200px]">
-                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                        <input type="text" id="searchInput" oninput="filterEvents()" placeholder="Cari nama, lokasi..." class="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all">
-                    </div>
+        Object.keys(row).forEach(key => {
+          const k = key.trim().toLowerCase();
+          if (k.includes("tanggal") || k.includes("date") || k.includes("tgl")) dateVal = row[key];
+          else if (k.includes("kegiatan") || k.includes("event") || k.includes("nama") || k.includes("acara") || k.includes("title")) titleVal = row[key];
+          else if (k.includes("lokasi") || k.includes("tempat") || k.includes("location")) locationVal = row[key];
+          else if (k.includes("keterangan") || k.includes("deskripsi") || k.includes("desc") || k.includes("info")) descVal = row[key];
+        });
 
-                    <!-- Filter Range -->
-                    <select id="filterRange" onchange="filterEvents()" class="px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500">
-                        <option value="all">Semua Waktu</option>
-                        <option value="upcoming" selected>Mendatang & Hari Ini</option>
-                        <option value="3days">3 Hari Ke Depan</option>
-                        <option value="7days">7 Hari Ke Depan</option>
-                        <option value="30days">30 Hari Ke Depan</option>
-                        <option value="past">Sudah Selesai</option>
-                    </select>
-                </div>
-            </div>
+        // Fallback jika header tidak cocok, gunakan indeks kolom
+        const keys = Object.keys(row);
+        if (!dateVal && keys[0]) dateVal = row[keys[0]];
+        if (!titleVal && keys[1]) titleVal = row[keys[1]];
+        if (!locationVal && keys[2]) locationVal = row[keys[2]];
+        if (!descVal && keys[3]) descVal = row[keys[3]];
 
-            <!-- Event Cards Grid / List -->
-            <div id="allEventsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-                <!-- Content injected via JS -->
-            </div>
+        if (titleVal && dateVal) {
+          const parsedDate = parseFlexibleDate(dateVal);
+          if (parsedDate) {
+            eventsData.push({
+              id: index + 1,
+              title: titleVal.trim(),
+              dateObj: parsedDate,
+              rawDate: dateVal,
+              location: locationVal ? locationVal.trim() : "",
+              description: descVal ? descVal.trim() : ""
+            });
+          }
+        }
+      });
 
-            <!-- Empty State -->
-            <div id="emptyState" class="hidden text-center py-12 space-y-3">
-                <div class="inline-flex p-4 bg-slate-100 dark:bg-slate-700/50 rounded-full text-slate-400">
-                    <i data-lucide="calendar-x" class="w-8 h-8"></i>
-                </div>
-                <p class="text-sm text-slate-500 dark:text-slate-400">Tidak ada kegiatan yang cocok dengan kriteria pencarian.</p>
-            </div>
+      // Sortir Berdasarkan Tanggal Terdekat
+      eventsData.sort((a, b) => a.dateObj - b.dateObj);
 
-        </section>
+      updateStatsAndHighlights();
+      renderAllEvents();
+    }
 
-    </main>
+    function isSameDay(d1, d2) {
+      return d1.getFullYear() === d2.getFullYear() &&
+             d1.getMonth() === d2.getMonth() &&
+             d1.getDate() === d2.getDate();
+    }
 
-    <!-- Footer -->
-    <footer class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700/60 py-6 mt-12 transition-colors">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
-            <div class="flex items-center space-x-2">
-                <span>Diperbarui otomatis dari Google Sheets CSV</span>
-                <span>•</span>
-                <a href="https://docs.google.com/spreadsheets/d/116_OW7urpjbC_pvBmqeh2nVadBCZ0Cv0IT-eXHviMY0/edit" target="_blank" class="text-brand-500 hover:underline flex items-center gap-1">
-                    Buka Spreadsheet <i data-lucide="external-link" class="w-3 h-3"></i>
-                </a>
-            </div>
-        </div>
-    </footer>
+    function getDiffDays(targetDate, baseDate) {
+      const t1 = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+      const t2 = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+      return Math.round((t1 - t2) / (1000 * 60 * 60 * 24));
+    }
 
-    <!-- Main JavaScript Logic -->
-    <script>
-        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXJ1LhQ4SOyXkUp4Jt_ZLpoJD2h8l-BhYQhNEFB_jO8DAX8iFeXxnYSOME5JCM8xW5p19HsMKSE1UP/pub?output=csv';
+    function formatDateIndo(dateObj) {
+      const options = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
+      return dateObj.toLocaleDateString('id-ID', options);
+    }
 
-        let rawEvents = [];
+    function updateStatsAndHighlights() {
+      const now = new Date();
+      document.getElementById("todayDateStr").innerText = formatDateIndo(now);
 
-        // Initialize Lucide icons
-        lucide.createIcons();
+      let todayCount = 0;
+      let upcomingCount = 0;
+      let passedCount = 0;
 
-        // Dark mode setup
-        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-            updateThemeIcon(true);
+      const todayList = [];
+      const upcomingList = [];
+
+      eventsData.forEach(ev => {
+        const diff = getDiffDays(ev.dateObj, now);
+
+        if (isSameDay(ev.dateObj, now)) {
+          todayCount++;
+          todayList.push(ev);
+        } else if (diff > 0) {
+          if (diff <= 7) upcomingCount++;
+          upcomingList.push({ ...ev, diffDays: diff });
         } else {
-            document.documentElement.classList.remove('dark');
-            updateThemeIcon(false);
+          passedCount++;
         }
+      });
 
-        function toggleDarkMode() {
-            const isDark = document.documentElement.classList.toggle('dark');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            updateThemeIcon(isDark);
-        }
+      document.getElementById("statTotal").innerText = eventsData.length;
+      document.getElementById("statToday").innerText = todayCount;
+      document.getElementById("statUpcoming").innerText = upcomingCount;
+      document.getElementById("statPassed").innerText = passedCount;
 
-        function updateThemeIcon(isDark) {
-            const themeIcon = document.getElementById('themeIcon');
-            themeIcon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
-            lucide.createIcons();
-        }
+      // Render Section Hari Ini
+      const todayContainer = document.getElementById("todayEventsContainer");
+      if (todayList.length === 0) {
+        todayContainer.innerHTML = `
+          <div class="text-center py-6 text-emerald-800/60">
+            <i data-lucide="coffee" class="w-8 h-8 mx-auto mb-2 opacity-60"></i>
+            <p class="text-sm font-medium">Tidak ada kegiatan untuk hari ini.</p>
+          </div>
+        `;
+      } else {
+        todayContainer.innerHTML = todayList.map(ev => `
+          <div class="bg-white p-4 rounded-xl border border-emerald-200/80 shadow-sm">
+            <span class="inline-block px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold tracking-wider uppercase rounded-full mb-2">HARI INI</span>
+            <h3 class="text-base font-bold text-slate-900">${ev.title}</h3>
+            ${ev.location ? `<p class="text-xs text-slate-500 flex items-center gap-1.5 mt-2"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-600"></i> ${ev.location}</p>` : ''}
+            ${ev.description ? `<p class="text-xs text-slate-600 mt-2 bg-slate-50 p-2 rounded-lg">${ev.description}</p>` : ''}
+          </div>
+        `).join("");
+      }
 
-        // Display current date badge
-        const todayObj = new Date();
-        document.getElementById('currentDateBadge').innerText = todayObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+      // Render Section Akan Datang Terdekat
+      const upcomingContainer = document.getElementById("upcomingEventsContainer");
+      if (upcomingList.length === 0) {
+        upcomingContainer.innerHTML = `
+          <div class="text-center py-6 text-slate-400">
+            <i data-lucide="check-circle" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+            <p class="text-sm font-medium">Belum ada kegiatan mendatang lainnya.</p>
+          </div>
+        `;
+      } else {
+        const topUpcoming = upcomingList.slice(0, 3);
+        upcomingContainer.innerHTML = topUpcoming.map(ev => `
+          <div class="bg-slate-50 hover:bg-slate-100/80 transition-all p-3.5 rounded-xl border border-slate-200/60 flex justify-between items-center">
+            <div>
+              <h3 class="text-sm font-bold text-slate-800">${ev.title}</h3>
+              <p class="text-xs text-slate-500 flex items-center gap-1 mt-1">
+                <i data-lucide="calendar" class="w-3.5 h-3.5"></i> ${formatDateIndo(ev.dateObj)}
+                ${ev.location ? `• <i data-lucide="map-pin" class="w-3.5 h-3.5 ml-1"></i> ${ev.location}` : ''}
+              </p>
+            </div>
+            <div class="text-right flex-shrink-0 ml-3">
+              <span class="inline-block px-2.5 py-1 bg-amber-100 text-amber-800 font-bold text-xs rounded-lg">
+                ${ev.diffDays} Hari Lagi
+              </span>
+            </div>
+          </div>
+        `).join("");
+      }
 
-        // Fetch Data from Published Google Sheets CSV
-        async function fetchData() {
-            const refreshIcon = document.getElementById('refreshIcon');
-            refreshIcon.classList.add('animate-spin');
+      lucide.createIcons();
+    }
 
-            Papa.parse(CSV_URL, {
-                download: true,
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    refreshIcon.classList.remove('animate-spin');
-                    if (results.data && results.data.length > 0) {
-                        processEvents(results.data);
-                    } else {
-                        console.warn("CSV kosong atau format tidak sesuai.");
-                    }
-                },
-                error: function(err) {
-                    refreshIcon.classList.remove('animate-spin');
-                    console.error("Gagal mengambil CSV:", err);
-                }
-            });
-        }
+    function renderAllEvents() {
+      const searchQuery = document.getElementById("searchInput").value.toLowerCase();
+      const filterValue = document.getElementById("filterSelect").value;
+      const container = document.getElementById("allEventsContainer");
+      const now = new Date();
 
-        // Process and normalize event data
-        function processEvents(data) {
-            rawEvents = data.map((item, index) => {
-                // Flexibly find column keys regardless of slight header naming variations
-                const keys = Object.keys(item);
-                
-                const findValue = (possibleNames) => {
-                    const key = keys.find(k => possibleNames.some(p => k.toLowerCase().trim().includes(p)));
-                    return key ? item[key] : '';
-                };
+      const filtered = eventsData.filter(ev => {
+        const matchesSearch = ev.title.toLowerCase().includes(searchQuery) || 
+                              ev.location.toLowerCase().includes(searchQuery) ||
+                              ev.description.toLowerCase().includes(searchQuery);
 
-                const dateStr = findValue(['tanggal', 'date', 'waktu', 'time']) || '';
-                const title = findValue(['kegiatan', 'event', 'nama', 'title', 'acara']) || 'Kegiatan Tanpa Nama';
-                const desc = findValue(['deskripsi', 'keterangan', 'desc', 'detail']) || '';
-                const location = findValue(['lokasi', 'tempat', 'location', 'venue']) || 'Online / Tidak Ditentukan';
-                const status = findValue(['status', 'kategori', 'tipe']) || 'Rencana';
+        const diff = getDiffDays(ev.dateObj, now);
+        const isToday = isSameDay(ev.dateObj, now);
 
-                const parsedDate = parseFlexibleDate(dateStr);
+        let matchesFilter = true;
+        if (filterValue === "upcoming") matchesFilter = diff >= 0 || isToday;
+        else if (filterValue === "today") matchesFilter = isToday;
+        else if (filterValue === "past") matchesFilter = diff < 0 && !isToday;
 
-                return {
-                    id: index,
-                    rawDate: dateStr,
-                    date: parsedDate,
-                    title: title.trim(),
-                    desc: desc.trim(),
-                    location: location.trim(),
-                    status: status.trim()
-                };
-            }).filter(e => e.title && e.date);
-        // Helper to parse DD/MM/YYYY date formats from Google Sheets
-        function parseFlexibleDate(dateString) {
-            if (!dateString) return null;
-            
-            let str = dateString.trim();
+        return matchesSearch && matchesFilter;
+      });
 
-            // Match DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
-            const parts = str.split(/[\/\-\.]/);
-            if (parts.length === 3) {
-                let day, month, year;
-                
-                if (parts[0].length === 4) { 
-                    // YYYY-MM-DD format
-                    year = parseInt(parts[0], 10);
-                    month = parseInt(parts[1], 10) - 1;
-                    day = parseInt(parts[2], 10);
-                } else { 
-                    // Explicit DD/MM/YYYY format
-                    day = parseInt(parts[0], 10);
-                    month = parseInt(parts[1], 10) - 1;
-                    year = parseInt(parts[2], 10);
-                }
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full text-center py-12 text-slate-400">
+            <i data-lucide="inbox" class="w-10 h-10 mx-auto mb-2 opacity-50"></i>
+            <p class="text-sm font-medium">Tidak ada kegiatan yang cocok dengan kriteria pencarian.</p>
+          </div>
+        `;
+      } else {
+        container.innerHTML = filtered.map(ev => {
+          const diff = getDiffDays(ev.dateObj, now);
+          const isToday = isSameDay(ev.dateObj, now);
 
-                const d = new Date(year, month, day);
-                if (!isNaN(d.getTime())) {
-                    d.setHours(0,0,0,0);
-                    return d;
-                }
-            }
+          let statusBadge = '';
+          if (isToday) {
+            statusBadge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">HARI INI</span>`;
+          } else if (diff > 0) {
+            statusBadge = `<span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-semibold rounded-full">${diff} Hari Lagi</span>`;
+          } else {
+            statusBadge = `<span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-medium rounded-full">Selesai</span>`;
+          }
 
-            // Fallback for direct JS Date parse
-            let d = new Date(str);
-            if (!isNaN(d.getTime())) {
-                d.setHours(0,0,0,0);
-                return d;
-            }
+          return `
+            <div class="bg-white border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+              <div>
+                <div class="flex justify-between items-start gap-2 mb-2">
+                  <span class="text-xs font-semibold text-blue-600 flex items-center gap-1">
+                    <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+                    ${formatDateIndo(ev.dateObj)}
+                  </span>
+                  ${statusBadge}
+                </div>
+                <h3 class="text-sm font-bold text-slate-900 leading-snug">${ev.title}</h3>
+                ${ev.description ? `<p class="text-xs text-slate-500 mt-2 line-clamp-2">${ev.description}</p>` : ''}
+              </div>
+              
+              ${ev.location ? `
+                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center text-xs text-slate-500">
+                  <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400 mr-1.5 flex-shrink-0"></i>
+                  <span class="truncate">${ev.location}</span>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join("");
+      }
 
-            return null;
-        }
-
-        // Days Diff Calculation
-        function getDaysDiff(targetDate) {
-            const today = new Date();
-            today.setHours(0,0,0,0);
-            
-            const target = new Date(targetDate);
-            target.setHours(0,0,0,0);
-
-            const diffTime = target - today;
-            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        }
-
-        // Render Dashboard Sections
-        function renderDashboard() {
-            const todayList = document.getElementById('todayList');
-            const upcomingList = document.getElementById('upcomingList');
-
-            todayList.innerHTML = '';
-            upcomingList.innerHTML = '';
-
-            let countTotal = rawEvents.length;
-            let countToday = 0;
-            let countUpcoming7 = 0;
-            let countPast = 0;
-
-            const todayEvents = [];
-            const upcomingEvents = [];
-
-            rawEvents.forEach(event => {
-                const daysDiff = getDaysDiff(event.date);
-
-                if (daysDiff === 0) {
-                    countToday++;
-                    todayEvents.push(event);
-                } else if (daysDiff > 0) {
-                    if (daysDiff <= 7) countUpcoming7++;
-                    upcomingEvents.push({ ...event, daysDiff });
-                } else {
-                    countPast++;
-                }
-            });
-
-            // Update Stats
-            document.getElementById('statTotal').innerText = countTotal;
-            document.getElementById('statToday').innerText = countToday;
-            document.getElementById('statUpcoming').innerText = countUpcoming7;
-            document.getElementById('statPast').innerText = countPast;
-
-            // Render Today's Events
-            if (todayEvents.length === 0) {
-                todayList.innerHTML = `
-                    <div class="text-center py-6 text-slate-500 dark:text-slate-400 text-xs">
-                        <i data-lucide="coffee" class="w-6 h-6 mx-auto mb-1 opacity-60"></i>
-                        Tidak ada agenda kegiatan untuk hari ini.
-                    </div>
-                `;
-            } else {
-                todayEvents.forEach(e => {
-                    todayList.innerHTML += `
-                        <div class="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-emerald-200/80 dark:border-emerald-800/50 shadow-sm flex items-start justify-between">
-                            <div class="space-y-1">
-                                <span class="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 rounded-md">Hari Ini</span>
-                                <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100">${escapeHtml(e.title)}</h4>
-                                ${e.desc ? `<p class="text-xs text-slate-600 dark:text-slate-400">${escapeHtml(e.desc)}</p>` : ''}
-                                <div class="flex items-center space-x-3 text-[11px] text-slate-500 dark:text-slate-400 pt-1">
-                                    <span class="flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i> ${escapeHtml(e.location)}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-
-            // Render Upcoming Events
-            if (upcomingEvents.length === 0) {
-                upcomingList.innerHTML = `
-                    <div class="text-center py-6 text-slate-500 dark:text-slate-400 text-xs">
-                        <i data-lucide="check-circle" class="w-6 h-6 mx-auto mb-1 opacity-60"></i>
-                        Belum ada kegiatan mendatang lainnya.
-                    </div>
-                `;
-            } else {
-                upcomingEvents.slice(0, 5).forEach(e => {
-                    upcomingList.innerHTML += `
-                        <div class="bg-slate-50 dark:bg-slate-700/40 p-3.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
-                            <div class="space-y-1">
-                                <h4 class="font-semibold text-xs sm:text-sm text-slate-800 dark:text-slate-100">${escapeHtml(e.title)}</h4>
-                                <div class="flex items-center space-x-3 text-[11px] text-slate-500 dark:text-slate-400">
-                                    <span class="flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> ${formatDate(e.date)}</span>
-                                    <span class="flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i> ${escapeHtml(e.location)}</span>
-                                </div>
-                            </div>
-                            <div class="text-right flex-shrink-0">
-                                <span class="px-2.5 py-1 text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 rounded-lg inline-block">
-                                    H-${e.daysDiff} Hari
-                                </span>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-
-            filterEvents();
-            lucide.createIcons();
-        }
-
-        // Filter and Search Events
-        function filterEvents() {
-            const searchVal = document.getElementById('searchInput').value.toLowerCase();
-            const rangeVal = document.getElementById('filterRange').value;
-            const container = document.getElementById('allEventsContainer');
-            const emptyState = document.getElementById('emptyState');
-
-            container.innerHTML = '';
-
-            const filtered = rawEvents.filter(e => {
-                const matchesSearch = e.title.toLowerCase().includes(searchVal) || 
-                                      e.location.toLowerCase().includes(searchVal) ||
-                                      e.desc.toLowerCase().includes(searchVal);
-
-                const daysDiff = getDaysDiff(e.date);
-
-                let matchesRange = true;
-                if (rangeVal === 'upcoming') matchesRange = daysDiff >= 0;
-                else if (rangeVal === '3days') matchesRange = daysDiff >= 0 && daysDiff <= 3;
-                else if (rangeVal === '7days') matchesRange = daysDiff >= 0 && daysDiff <= 7;
-                else if (rangeVal === '30days') matchesRange = daysDiff >= 0 && daysDiff <= 30;
-                else if (rangeVal === 'past') matchesRange = daysDiff < 0;
-
-                return matchesSearch && matchesRange;
-            });
-
-            if (filtered.length === 0) {
-                emptyState.classList.remove('hidden');
-            } else {
-                emptyState.classList.add('hidden');
-                filtered.forEach(e => {
-                    const daysDiff = getDaysDiff(e.date);
-                    let badgeClass = "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300";
-                    let badgeText = `${daysDiff < 0 ? 'Selesai' : 'H-' + daysDiff + ' Hari'}`;
-
-                    if (daysDiff === 0) {
-                        badgeClass = "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 font-bold animate-pulse";
-                        badgeText = "HARI INI";
-                    } else if (daysDiff > 0 && daysDiff <= 3) {
-                        badgeClass = "bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200 font-semibold";
-                    } else if (daysDiff > 0 && daysDiff <= 7) {
-                        badgeClass = "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200";
-                    }
-
-                    container.innerHTML += `
-                        <div class="bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/60 rounded-xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-3">
-                            <div class="space-y-2">
-                                <div class="flex items-start justify-between gap-2">
-                                    <span class="text-[11px] font-medium text-brand-600 dark:text-brand-400 flex items-center gap-1">
-                                        <i data-lucide="calendar" class="w-3.5 h-3.5"></i> ${formatDate(e.date)}
-                                    </span>
-                                    <span class="px-2 py-0.5 text-[10px] rounded-full ${badgeClass}">
-                                        ${badgeText}
-                                    </span>
-                                </div>
-                                <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 leading-snug">${escapeHtml(e.title)}</h3>
-                                ${e.desc ? `<p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">${escapeHtml(e.desc)}</p>` : ''}
-                            </div>
-
-                            <div class="pt-2 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                                <span class="flex items-center gap-1 truncate max-w-[180px]" title="${escapeHtml(e.location)}">
-                                    <i data-lucide="map-pin" class="w-3.5 h-3.5 flex-shrink-0 text-slate-400"></i> ${escapeHtml(e.location)}
-                                </span>
-                                ${e.status ? `<span class="px-2 py-0.5 text-[10px] bg-slate-100 dark:bg-slate-700 rounded text-slate-600 dark:text-slate-300">${escapeHtml(e.status)}</span>` : ''}
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-
-            lucide.createIcons();
-        }
-
-        // Date formatting helper
-        function formatDate(date) {
-            return date.toLocaleDateString('id-ID', {
-                weekday: 'short',
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric'
-            });
-        }
-
-        // Security XSS helper
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>"']/g, function(m) {
-                return {
-                    '&': '&amp;',
-                    '<': '&lt;',
-                    '>': '&gt;',
-                    '"': '&quot;',
-                    "'": '&#039;'
-                }[m];
-            });
-        }
-
-        // Initialize on load
-        window.onload = function() {
-            fetchData();
-        };
-    </script>
+      lucide.createIcons();
+    }
+  </script>
 </body>
 </html>
